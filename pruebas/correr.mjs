@@ -65,6 +65,14 @@ if (!filtro) {
     process.exit(1)
   }
   console.log('  ok    cancha del encabezado')
+
+  const contraste = await correr(join(RAIZ, 'scripts', 'verificar-contraste.mjs'), 'contraste')
+  if (contraste.codigo !== 0) {
+    console.log(contraste.salida.trimEnd())
+    console.log('\nHay colores por debajo del mínimo de contraste.')
+    process.exit(1)
+  }
+  console.log('  ok    contraste')
 }
 
 const archivos = readdirSync(AQUI)

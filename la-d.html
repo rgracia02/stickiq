@@ -23,6 +23,7 @@
     --tinta-suave: #5a6b76;
     --borde: #d3dde4;
     --verde: #1f8a5b;
+    --verde-texto: #1a7a50;
     --rojo: #c0392f;
 
 
@@ -33,6 +34,20 @@
     --marca-partido: #1a7fbf;
     --celda-vacia: #e3e9ee;
     --marca-asist: #7b57c9;
+
+    /*
+      Dos colores que el amarillo pelota no puede hacer sobre fondo claro.
+
+      El amarillo tiene 1,44:1 sobre el papel y 1,63:1 sobre la tarjeta. Estaba
+      usado como anillo de foco, como marca de «tocaste esta celda» y como cifra
+      de goles: las tres cosas invisibles en tema claro. El propio archivo ya
+      decia veinte lineas mas arriba que ese amarillo desaparece sobre blanco, y
+      lo usaba igual — un comentario no impide nada.
+
+      Sobre la cancha, que siempre es azul oscura, el amarillo sigue mandando.
+    */
+    --foco: #0e5c86;
+    --gol-cifra: #96650a;
 
     --paso: 0.9rem;
     --radio: 14px;
@@ -46,11 +61,14 @@
       --tinta-suave: #8ba0ad;
       --borde: #223642;
       --verde: #3fbd84;
+      --verde-texto: #3fbd84;
       --rojo: #ef6b60;
       --marca-entreno: #bd8718;
       --marca-partido: #2f8fcc;
       --celda-vacia: #1b2c37;
       --marca-asist: #9b7ae0;
+      --foco: #f5c518;
+      --gol-cifra: #f5c518;
     }
   }
 
@@ -61,11 +79,14 @@
     --tinta-suave: #8ba0ad;
     --borde: #223642;
     --verde: #3fbd84;
+    --verde-texto: #3fbd84;
     --rojo: #ef6b60;
     --marca-entreno: #bd8718;
     --marca-partido: #2f8fcc;
     --celda-vacia: #1b2c37;
     --marca-asist: #9b7ae0;
+    --foco: #f5c518;
+    --gol-cifra: #f5c518;
   }
 
   * { box-sizing: border-box; }
@@ -302,13 +323,18 @@
 
   .dato { text-align: center; }
   .dato .cifra { font-size: 1.9rem; display: block; }
-  .dato .rotulo { font-size: 0.68rem; letter-spacing: 0.08em; margin-top: 0.25rem; display: block; }
-  .dato[data-tono="gol"] .cifra { color: var(--pelota); }
+  /* 0,68 rem son 10,9 px: por debajo de lo que se lee comodo en un telefono,
+     y estas son las etiquetas de las seis cifras principales. */
+  .dato .rotulo { font-size: 0.75rem; letter-spacing: 0.07em; margin-top: 0.25rem; display: block; }
+  .dato[data-tono="gol"] .cifra { color: var(--gol-cifra); }
   .nota-entreno {
     display: block;
     margin-top: 0.15rem;
-    font-size: 0.62rem;
-    color: var(--marca-entreno);
+    /* Sube de 0,62 a 0,72 rem y deja el ambar: a ese tamano el ambar da 3,7:1
+       sobre blanco, y hace falta 4,5. Lo que decia el color ya lo dice el texto
+       («+4 entren.»), asi que no se pierde nada al quitarlo. */
+    font-size: 0.72rem;
+    color: var(--tinta-suave);
     font-variant-numeric: tabular-nums;
   }
 
@@ -482,7 +508,7 @@
   }
   .celda[data-futuro="si"] { background: none; box-shadow: inset 0 0 0 1px var(--celda-vacia); cursor: default; }
   .celda[data-hoy="si"] { outline: 2px solid var(--tinta); outline-offset: 1px; }
-  .celda[aria-pressed="true"] { outline: 2px solid var(--pelota); outline-offset: 1px; }
+  .celda[aria-pressed="true"] { outline: 2px solid var(--foco); outline-offset: 1px; }
 
   .leyenda {
     display: flex;
@@ -533,7 +559,7 @@
   /* Un partido sin goles tuyos igual ocurrió: se deja un tocón visible en vez
      de una columna vacía que se lee como «ese día no jugaste». */
   .barra[data-cero="si"] { background: var(--borde); }
-  .columna[aria-pressed="true"] .barra { outline: 2px solid var(--pelota); outline-offset: 1px; }
+  .columna[aria-pressed="true"] .barra { outline: 2px solid var(--foco); outline-offset: 1px; }
 
   .detalle {
     margin-top: 0.6rem;
@@ -574,7 +600,8 @@
     margin-left: auto;
     background: none;
     border: none;
-    color: rgb(255 255 255 / 0.6);
+    /* 0,6 daba 3,7:1 sobre el azul de la cancha y esto es texto. */
+    color: rgb(255 255 255 / 0.78);
     font: inherit;
     font-size: 0.78rem;
     cursor: pointer;
@@ -623,7 +650,7 @@
   .logro .nombre {
     display: block;
     margin-top: 0.35rem;
-    font-size: 0.68rem;
+    font-size: 0.74rem;
     line-height: 1.25;
     color: var(--tinta-suave);
   }
@@ -1116,7 +1143,9 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.04em;
   }
-  .balance .g { color: var(--verde); }
+  /* Un verde propio para texto: el de los estados da 4,33:1 sobre blanco y
+     estas son cifras que hay que leer, no una raya de color. */
+  .balance .g { color: var(--verde-texto); }
   .balance .p { color: var(--rojo); }
   .balance .e { color: var(--tinta-suave); }
 
@@ -1277,8 +1306,14 @@
   .boton[data-tipo="callado"]:hover { color: var(--tinta); }
 
   :where(button, input, [tabindex]):focus-visible {
-    outline: 2px solid var(--pelota);
+    outline: 2px solid var(--foco);
     outline-offset: 2px;
+  }
+
+  /* La cancha es una superficie azul fija, no sigue el tema: ahí el que se ve
+     es el amarillo, con 4,45:1 contra el azul. */
+  .cancha :where(button, input, [tabindex]):focus-visible {
+    outline-color: var(--pelota);
   }
 
   .vacio {
@@ -2495,19 +2530,6 @@
         )
         .join('')
 
-      document.getElementById('cuando-d').addEventListener('click', (e) => {
-        const b = e.target.closest('button')
-        if (!b) return
-        const fila = b.closest('.fichas')
-        const g = borrador.posiciones[Number(fila.dataset.gol)]
-        const c = Number(b.dataset.c)
-        // Volver a tocar el mismo lo apaga: es opcional de verdad.
-        g.cuarto = g.cuarto === c ? undefined : c
-        fila.querySelectorAll('button').forEach((x) => {
-          x.setAttribute('aria-pressed', String(Number(x.dataset.c) === g.cuarto))
-        })
-      })
-
       document.getElementById('svg-d').addEventListener('click', (e) => {
         const hueco = borrador.posiciones.find((g) => typeof g.x !== 'number')
         if (!hueco) return
@@ -2532,6 +2554,31 @@
         redibujar()
       })
     }
+
+    /*
+      Esta escucha va UNA vez, fuera de redibujar.
+
+      Estaba dentro, y `#cuando-d` no se reemplaza —solo cambia su contenido—,
+      así que cada redibujado le sumaba otra. En el camino normal quedaban dos:
+      subir el contador de goles y tocar la D. Con dos escuchas, tocar un cuarto
+      ejecutaba el interruptor dos veces —lo ponía y lo quitaba— y la ficha no
+      hacía nada, sin ningún error.
+
+      El de la D no tenía el problema porque ese SVG sí se vuelve a crear en cada
+      redibujado, y con él su escucha.
+    */
+    document.getElementById('cuando-d').addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      const fila = b.closest('.fichas')
+      const g = borrador.posiciones[Number(fila.dataset.gol)]
+      const c = Number(b.dataset.c)
+      // Volver a tocar el mismo lo apaga: es opcional de verdad.
+      g.cuarto = g.cuarto === c ? undefined : c
+      fila.querySelectorAll('button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.c) === g.cuarto))
+      })
+    })
 
     redibujar()
     // Si cambia la cantidad de goles, la D se ajusta: subir de 2 a 3 pide otro
@@ -2615,7 +2662,7 @@
         `y <b>${r.partidos}</b> ${r.partidos === 1 ? 'partido' : 'partidos'}. ` +
         `Reemplaza todo lo que tienes ahora.` +
         `<br><button class="boton" id="confirmar-restaurar" type="button"
-           style="margin-top:0.5rem;background:var(--rojo);border-color:var(--rojo);color:var(--canvas,#fff)">
+           style="margin-top:0.5rem;background:var(--rojo);border-color:var(--rojo);color:#fff">
            Sí, reemplazar</button>`
       document.getElementById('confirmar-restaurar').addEventListener('click', () => {
         try {
