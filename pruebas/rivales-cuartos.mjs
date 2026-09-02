@@ -17,7 +17,7 @@ const fuente =
   'export const ponerEstado = (e) => { estado = e }\n' +
   'export const ponerBorrador = (b) => { borrador = b }\n' +
   trozo('function todosLosPartidos', '  function pintarGrafico') +
-  trozo('  function porRival()', '  function pintarRivales') +
+  trozo('  const claveRival =', '  function pintarRivales') +
   // `resultado` vive aparte y `porRival` lo usa: sin este trozo la prueba
   // revienta al cargar en vez de comprobar nada.
   trozo('  const resultado = (p) =>', '  // ---------- pintar ----------') +
@@ -72,6 +72,40 @@ M.ponerEstado({
 })
 eq('se junta en una sola ficha', M.porRival().length, 1)
 eq('con dos partidos', M.porRival()[0].jugados, 2)
+
+console.log('\n- TRAF, Traf y traf son el mismo equipo -')
+// La pregunta de Rodrigo, y era un fallo real: antes solo se quitaban espacios,
+// asi que una mayuscula distinta partia su historial contra un club en dos
+// fichas con la mitad de los partidos cada una, sin que nada avisara.
+M.ponerEstado({
+  meta: 3,
+  entrenamientos: [],
+  dias: [
+    dia('2026-03-07', p('TRAF', 2, 0, 1), p('Traf', 1, 1, 0)),
+    dia('2026-03-14', p('traf ', 0, 3, 0))
+  ]
+})
+eq('una sola ficha', M.porRival().length, 1)
+eq('con los tres partidos', M.porRival()[0].jugados, 3)
+eq('y el balance completo', [M.porRival()[0].g, M.porRival()[0].e, M.porRival()[0].p], [1, 1, 1])
+eq('se muestra la ultima forma escrita', M.porRival()[0].rival, 'traf')
+
+console.log('\n- y las tildes tampoco los separan -')
+M.ponerEstado({
+  meta: 3,
+  entrenamientos: [],
+  dias: [dia('2026-03-07', p('Peñalolén', 1, 0), p('Penalolen', 2, 0))]
+})
+eq('mismo club', M.porRival().length, 1)
+eq('dos partidos', M.porRival()[0].jugados, 2)
+
+console.log('\n- pero dos clubes distintos siguen siendo dos -')
+M.ponerEstado({
+  meta: 3,
+  entrenamientos: [],
+  dias: [dia('2026-03-07', p('Traf', 1, 0), p('Prince', 1, 0))]
+})
+eq('dos fichas', M.porRival().length, 2)
 
 console.log('\n- el orden no cambia entre aperturas -')
 M.ponerEstado({

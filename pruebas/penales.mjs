@@ -17,7 +17,7 @@ const fuente =
   trozo('function todosLosPartidos', '// ---------- logros') +
   trozo('  function totales()', '  const resultado =') +
   trozo('  const resultado = (p) =>', '  // ---------- pintar ----------') +
-  trozo('  function porRival()', '  function pintarRivales') +
+  trozo('  const claveRival =', '  function pintarRivales') +
   '\nexport { resultado, seFueAPenales, totales, porRival }'
 
 const M = await cargar(fuente)

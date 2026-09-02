@@ -1030,6 +1030,39 @@
   }
 
 
+
+  /* ---------- los rivales de siempre ---------- */
+
+  /*
+    Fichas y no una lista desplegable. El <datalist> del navegador sugiere pero
+    no obliga, y en iPhone muchas veces ni aparece — asi que la mitad de las
+    veces escribes el nombre a mano y basta una mayuscula distinta para partir
+    en dos el historial contra un equipo.
+
+    Una ficha que se toca no se puede escribir mal.
+  */
+  .chips-rival {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+  }
+  .chips-rival button {
+    border: 1px solid var(--borde);
+    background: var(--tarjeta);
+    color: var(--tinta);
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .chips-rival button[aria-pressed="true"] {
+    background: var(--cancha);
+    border-color: var(--cancha);
+    color: #fff;
+  }
+
   /* ---------- contra quién ---------- */
 
   .rivales { display: flex; flex-direction: column; }
@@ -1965,7 +1998,7 @@
   }
 
   function pintarHoja() {
-    const rivales = [...new Set(estado.dias.flatMap((d) => d.partidos.map((p) => p.rival)))]
+    const rivales = rivalesConocidos()
     const torneos = [...new Set(estado.dias.map((d) => d.torneo))]
 
     document.getElementById('hoja-registro').innerHTML = `
@@ -1973,11 +2006,24 @@
 
       <div class="campo">
         <label class="rotulo" for="rival">Rival</label>
-        <input id="rival" type="text" list="lista-rivales" autocomplete="off"
-               placeholder="Nombre del club" value="${escapar(borrador.rival)}">
-        <datalist id="lista-rivales">
-          ${rivales.map((r) => `<option value="${escapar(r)}"></option>`).join('')}
-        </datalist>
+        ${
+          rivales.length
+            ? `<div class="chips-rival" id="chips-rival">` +
+              rivales
+                .slice(0, 8)
+                .map(
+                  (r) =>
+                    `<button type="button" data-rival="${escapar(r)}" aria-pressed="${
+                      claveRival(borrador.rival ?? '') === claveRival(r)
+                    }">${escapar(r)}</button>`
+                )
+                .join('') +
+              `</div>`
+            : ''
+        }
+        <input id="rival" type="text" autocomplete="off"
+               placeholder="${rivales.length ? 'O escribe uno nuevo' : 'Nombre del club'}"
+               value="${escapar(borrador.rival)}">
       </div>
 
       <div class="marcador-doble">
@@ -2097,6 +2143,19 @@
     </div>`
 
   function cablearHoja() {
+    document.getElementById('chips-rival')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      // Se copia la forma exacta que ya estaba guardada, no una version
+      // «arreglada»: asi el nombre nunca se bifurca.
+      const campo = document.getElementById('rival')
+      const mismo = claveRival(campo.value) === claveRival(b.dataset.rival)
+      campo.value = mismo ? '' : b.dataset.rival
+      document.querySelectorAll('#chips-rival button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x === b && !mismo))
+      })
+    })
+
     cablearContadores()
     cablearD()
     cablearSensacion()
@@ -3110,6 +3169,35 @@
   }
 
 
+
+  /*
+    La clave con la que dos nombres son el mismo equipo.
+
+    Ignora mayusculas, tildes y espacios de mas: «TRAF», «Traf» y «traf » son el
+    mismo club. Antes solo se quitaban los espacios, asi que una mayuscula
+    distinta partia en dos el historial contra un rival sin que nada avisara —
+    aparecian dos fichas con la mitad de los partidos cada una.
+
+    Lo que se muestra es la ultima forma en que lo escribiste, no la clave: la
+    clave es para agrupar, no para leerla.
+  */
+  const claveRival = (nombre) =>
+    nombre
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+
+  /** Los rivales ya jugados, del mas reciente al mas antiguo. */
+  function rivalesConocidos() {
+    const vistos = new Map()
+    for (const x of todosLosPartidos()) {
+      vistos.set(claveRival(x.rival), x.rival.trim())
+    }
+    return [...vistos.values()].reverse()
+  }
+
   // ---------- contra quién ----------
 
   /*
@@ -3120,8 +3208,11 @@
   function porRival() {
     const mapa = new Map()
     for (const x of todosLosPartidos()) {
-      const clave = x.rival.trim()
-      const r = mapa.get(clave) ?? { rival: clave, jugados: 0, g: 0, e: 0, p: 0, goles: 0 }
+      const clave = claveRival(x.rival)
+      // El nombre que se ve es el de la ultima vez: si empezaste escribiendolo
+      // mal y despues bien, la ficha se corrige sola.
+      const r = mapa.get(clave) ?? { rival: '', jugados: 0, g: 0, e: 0, p: 0, goles: 0 }
+      r.rival = x.rival.trim()
       r.jugados++
       const res = resultado(x)
       if (res === 'g') r.g++
