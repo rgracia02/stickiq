@@ -1622,6 +1622,8 @@
             asistencias: null,
             minutos: null,
             posiciones: [],
+            // null = no hubo penales. No es lo mismo que haberlos perdido.
+            penales: null,
             // Los partidos guardados antes de que existiera el formato se leen
             // como de 11. No es un adivinar: cuando se anotaron, las fichas de
             // periodo solo ofrecian cuatro cuartos, asi que eso es lo que
@@ -1748,11 +1750,33 @@
       golesEntreno: suma(estado.entrenamientos, 'goles'),
       asistEntreno: suma(estado.entrenamientos, 'asistencias'),
       minutos: suma(partidos, 'minutos'),
-      ganados: partidos.filter((p) => p.nuestros > p.suyos).length
+      ganados: partidos.filter((p) => resultado(p) === 'g').length
     }
   }
 
-  const resultado = (p) => (p.nuestros > p.suyos ? 'g' : p.nuestros < p.suyos ? 'p' : 'e')
+  /*
+    El resultado, con los penales dentro.
+
+    En hockey una eliminatoria empatada se define por penales, y ese partido no
+    es un empate: lo ganaste o lo perdiste. Con el marcador solo, una final
+    ganada 2-2 en penales aparecía como empate — y en las finales que vienen eso
+    habría contado mal justo los partidos que más importan.
+
+    Vive en una sola función para que la lista, los totales, la ficha del rival
+    y la lámina digan todos lo mismo.
+  */
+  const resultado = (p) =>
+    p.nuestros > p.suyos
+      ? 'g'
+      : p.nuestros < p.suyos
+        ? 'p'
+        : p.penales === 'g'
+          ? 'g'
+          : p.penales === 'p'
+            ? 'p'
+            : 'e'
+
+  const seFueAPenales = (p) => p.nuestros === p.suyos && Boolean(p.penales)
 
   // ---------- pintar ----------
 
@@ -1864,6 +1888,7 @@
               ` aria-label="Editar ${escapar(p.rival)}">` +
               `<span class="rival">${escapar(p.rival)}</span>` +
               `<span class="marcador" data-r="${resultado(p)}">${p.nuestros}–${p.suyos}` +
+              (seFueAPenales(p) ? `<span class="formato-7">p</span>` : '') +
               ((p.formato ?? 11) === 7 ? `<span class="formato-7">7</span>` : '') +
               `</span>` +
               `<span class="goles-mios" data-cero="${p.goles === 0 ? 'si' : 'no'}">` +
@@ -1896,6 +1921,7 @@
       asistencias: 0,
       minutos: null,
       formato: 11,
+      penales: null,
       fecha: hoy(),
       // El torneo se hereda del último día: en una fecha juegas tres partidos
       // seguidos y volver a escribir «Liga» cada vez es trabajo inventado.
@@ -1936,6 +1962,22 @@
         <div class="campo">
           <span class="mini-rotulo">Ellos</span>
           ${contador('suyos', borrador.suyos)}
+        </div>
+      </div>
+
+      <div class="campo" id="campo-penales" ${
+        borrador.nuestros === borrador.suyos ? '' : 'hidden'
+      }>
+        <label class="rotulo">¿Se definió por penales?</label>
+        <div class="fichas" id="penales">
+          ${[['g', 'Ganamos'], ['p', 'Perdimos']]
+            .map(
+              ([v, texto]) =>
+                `<button type="button" data-p="${v}" aria-pressed="${
+                  borrador.penales === v
+                }">${texto}</button>`
+            )
+            .join('')}
         </div>
       </div>
 
@@ -2045,6 +2087,15 @@
           const paso = Number(b.dataset.paso)
           borrador[campo] = Math.max(0, borrador[campo] + paso)
           c.querySelector('output').textContent = borrador[campo]
+
+          // La pregunta de los penales solo existe con el marcador empatado, y
+          // aparece o desaparece en el momento en que lo dejas así.
+          const caja = document.getElementById('campo-penales')
+          if (caja) {
+            const empate = borrador.nuestros === borrador.suyos
+            caja.hidden = !empate
+            if (!empate) borrador.penales = null
+          }
         })
       })
     })
@@ -2066,6 +2117,16 @@
   }
 
   function cablearFichas() {
+    document.getElementById('penales')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      const v = b.dataset.p
+      borrador.penales = borrador.penales === v ? null : v
+      document.querySelectorAll('#penales button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x.dataset.p === borrador.penales))
+      })
+    })
+
     document.getElementById('formato')?.addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
@@ -2132,6 +2193,9 @@
       suyos: borrador.suyos,
       goles: borrador.goles,
       formato: borrador.formato ?? 11,
+      // Solo tiene sentido con el marcador empatado: guardarlo en un 3-1 sería
+      // un dato que contradice al otro.
+      penales: borrador.nuestros === borrador.suyos ? (borrador.penales ?? null) : null,
       posiciones: borrador.posiciones ?? [],
       asistencias: borrador.asistencias ?? 0,
       // null y no cero: si no tocó las fichas, no se sabe cuánto jugó, y eso no
@@ -2186,6 +2250,13 @@
     en que el registro exige goles y asistencias todos los días, deja de hacerse.
   */
   function abrirDetalleEntreno(fecha = hoy()) {
+    // Si llega algo que no es una fecha, es un error de cableado y no un caso
+    // normal: se dice en la consola en vez de salirse callado, que fue justo lo
+    // que hizo que este botón pareciera muerto sin dejar rastro.
+    if (typeof fecha !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      console.error('abrirDetalleEntreno esperaba una fecha y recibió:', fecha)
+      return
+    }
     const actual = estado.entrenamientos.find((e) => e.fecha === fecha)
     if (!actual) return
     borrador = {
@@ -3025,8 +3096,9 @@
       const clave = x.rival.trim()
       const r = mapa.get(clave) ?? { rival: clave, jugados: 0, g: 0, e: 0, p: 0, goles: 0 }
       r.jugados++
-      if (x.nuestros > x.suyos) r.g++
-      else if (x.nuestros < x.suyos) r.p++
+      const res = resultado(x)
+      if (res === 'g') r.g++
+      else if (res === 'p') r.p++
       else r.e++
       r.goles += x.goles
       mapa.set(clave, r)
@@ -3357,8 +3429,8 @@
       )
       .join('')
 
-    const ganados = partidos.filter((x) => x.nuestros > x.suyos).length
-    const empatados = partidos.filter((x) => x.nuestros === x.suyos).length
+    const ganados = partidos.filter((x) => resultado(x) === 'g').length
+    const empatados = partidos.filter((x) => resultado(x) === 'e').length
 
     document.getElementById('medalla').outerHTML = `
       <div class="lamina" role="dialog" aria-modal="true" aria-labelledby="titulo-lamina" id="medalla">
@@ -3546,7 +3618,13 @@
     if (b) irA(b.dataset.pantalla)
   })
   document.getElementById('btn-resumen').addEventListener('click', abrirResumen)
-  document.getElementById('btn-detalle-entreno').addEventListener('click', abrirDetalleEntreno)
+  // Con una función de por medio y no `abrirDetalleEntreno` a secas: pasarla
+  // directa le entrega el evento del clic como si fuera la fecha, y entonces
+  // busca un entrenamiento con fecha MouseEvent, no encuentra nada y se sale
+  // sin hacer ni decir nada. El botón parecía muerto.
+  document.getElementById('btn-detalle-entreno').addEventListener('click', () =>
+    abrirDetalleEntreno()
+  )
 
 
   /*

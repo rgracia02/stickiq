@@ -13,6 +13,8 @@ const fuente =
   'export const ponerEstado = (e) => { estado = e }\n' +
   trozo('function todosLosPartidos', '// ---------- logros') +
   trozo('  function totales()', '  const resultado =') +
+  // `totales` cuenta los ganados con `resultado`, que ahora incluye los penales.
+  trozo('  const resultado = (p) =>', '  // ---------- pintar ----------') +
   trozo('  const sumaConocida =', '  function pintarGrafico') +
   '\nexport { totales, sumaConocida, todosLosPartidos }'
 

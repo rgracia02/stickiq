@@ -18,6 +18,9 @@ const fuente =
   'export const ponerBorrador = (b) => { borrador = b }\n' +
   trozo('function todosLosPartidos', '  function pintarGrafico') +
   trozo('  function porRival()', '  function pintarRivales') +
+  // `resultado` vive aparte y `porRival` lo usa: sin este trozo la prueba
+  // revienta al cargar en vez de comprobar nada.
+  trozo('  const resultado = (p) =>', '  // ---------- pintar ----------') +
   trozo('  function normalizarGoles()', '  function cablearD') +
   '\nexport { porRival, normalizarGoles, todosLosPartidos }'
 
