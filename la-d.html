@@ -960,6 +960,111 @@
     resize: vertical;
   }
 
+
+  /* ---------- el cuarto de cada gol ---------- */
+
+  .gol-fila {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+  }
+  .gol-fila > span:first-child {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    min-width: 46px;
+  }
+  .gol-fila .fichas { flex: 1; }
+  .gol-fila .fichas button { min-width: 0; height: 38px; font-size: 0.82rem; }
+
+  /* Las cuatro barras del reparto por cuarto. Van dentro de la tarjeta de la D
+     porque hablan de lo mismo: dónde y cuándo marcas. */
+  .cuartos {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    align-items: end;
+    height: 64px;
+    margin-top: 1rem;
+  }
+  .cuartos div { display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+  .cuartos i {
+    display: block;
+    border-radius: 4px 4px 0 0;
+    background: var(--marca-partido);
+  }
+  .cuartos b {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--tinta);
+  }
+  .pies-cuartos {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+  }
+  .pies-cuartos span {
+    text-align: center;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--tinta-suave);
+  }
+
+
+  /* ---------- contra quién ---------- */
+
+  .rivales { display: flex; flex-direction: column; }
+
+  .rival-fila {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .rival-fila:last-child { border-bottom: none; }
+
+  .rival-fila .quien { font-size: 0.95rem; font-weight: 500; }
+  .rival-fila .cuantos {
+    display: block;
+    font-size: 0.76rem;
+    color: var(--tinta-suave);
+  }
+
+  /* Ganados, empatados y perdidos como tres cifras separadas, no como un
+     porcentaje: con tres partidos jugados, «67 %» suena a estadística y no
+     dice nada que «2-0-1» no diga mejor. */
+  .balance {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+  .balance .g { color: var(--verde); }
+  .balance .p { color: var(--rojo); }
+  .balance .e { color: var(--tinta-suave); }
+
+  .rival-fila .mios {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--pelota) 26%, transparent);
+    white-space: nowrap;
+  }
+  .rival-fila .mios[data-cero="si"] { visibility: hidden; }
+
   /* ---------- vidrio ---------- */
 
   /*
@@ -1387,6 +1492,12 @@
       </div>
       <div id="mapa-d"></div>
       <p class="detalle" id="detalle-d"></p>
+      <div id="reparto-cuartos"></div>
+    </section>
+
+    <section class="tarjeta" id="caja-rivales" hidden>
+      <div class="encabezado-seccion"><h2>Contra quién</h2></div>
+      <div class="rivales" id="rivales"></div>
     </section>
 
     <section>
@@ -1576,14 +1687,23 @@
   const entrenoHoy = () => estado.entrenamientos.some((e) => e.fecha === hoy())
   const deHoy = () => estado.entrenamientos.find((e) => e.fecha === hoy())
 
-  function alternarHoy() {
-    const d = hoy()
-    estado.entrenamientos = entrenoHoy()
-      ? estado.entrenamientos.filter((x) => x.fecha !== d)
-      : [...estado.entrenamientos, { fecha: d }]
+  /*
+    Marcar o desmarcar un día cualquiera, no solo hoy.
+
+    Antes solo sabía de hoy, y eso era un agujero de verdad: entrenando tres
+    veces por semana, que se te pase un martes y lo recuerdes el jueves pasa
+    seguro — y ese entrenamiento se perdía para siempre sin forma de arreglarlo.
+  */
+  function alternarDia(fecha) {
+    const tiene = estado.entrenamientos.some((e) => e.fecha === fecha)
+    estado.entrenamientos = tiene
+      ? estado.entrenamientos.filter((x) => x.fecha !== fecha)
+      : [...estado.entrenamientos, { fecha }]
     guardar()
     pintar()
   }
+
+  const alternarHoy = () => alternarDia(hoy())
 
   const deEstaSemana = () => {
     const lunes = lunesDe(new Date())
@@ -1690,6 +1810,7 @@
     pintarRecords()
     pintarGrafico()
     pintarMapaD()
+    pintarRivales()
     pintarDias()
 
     // Al final y no al principio: la medalla tapa la pantalla, y tiene que
@@ -1808,6 +1929,7 @@
         <label class="rotulo">Dónde marcaste <span style="text-transform:none;font-weight:400">(opcional)</span></label>
         <div id="poner-d"></div>
         <p class="detalle" id="pie-d" style="margin-top:0.4rem"></p>
+        <div id="cuando-d"></div>
       </div>
 
       <div class="campo">
@@ -2013,8 +2135,8 @@
     primero. Marcar que fuiste tiene que seguir costando un toque: en el momento
     en que el registro exige goles y asistencias todos los días, deja de hacerse.
   */
-  function abrirDetalleEntreno() {
-    const actual = deHoy()
+  function abrirDetalleEntreno(fecha = hoy()) {
+    const actual = estado.entrenamientos.find((e) => e.fecha === fecha)
     if (!actual) return
     borrador = {
       goles: actual.goles ?? 0,
@@ -2023,7 +2145,9 @@
       entreno: true
     }
     document.getElementById('hoja-registro').innerHTML = `
-      <h2 id="titulo-hoja">El entrenamiento de hoy</h2>
+      <h2 id="titulo-hoja">${
+        fecha === hoy() ? 'El entrenamiento de hoy' : 'El entrenamiento del ' + enPalabras(fecha)
+      }</h2>
       <p style="margin:0;font-size:0.9rem;color:var(--tinta-suave)">
         Si hubo partido de entrenamiento y anotaste, ponlo acá. Todo es opcional.
       </p>
@@ -2052,7 +2176,7 @@
     cablearSensacion()
     document.getElementById('cancelar').addEventListener('click', cerrarHoja)
     document.getElementById('guardar-entreno').addEventListener('click', () => {
-      const e = deHoy()
+      const e = estado.entrenamientos.find((x) => x.fecha === fecha)
       if (e) {
         e.goles = borrador.goles
         e.asistencias = borrador.asistencias
@@ -2071,10 +2195,24 @@
     tres que dijiste, la D deja de aceptar toques en vez de dejarte marcar
     cuatro y que los números no cuadren con el dibujo.
   */
+  /*
+    Una entrada por gol, siempre.
+
+    Antes `posiciones` solo tenía las que habías puesto en la D. Con el cuarto
+    de por medio eso no alcanza: un gol puede tener cuarto y no tener sitio, o
+    al revés. Se normaliza al abrir la hoja — tantas entradas como goles, cada
+    una con lo que se sepa y lo demás vacío.
+  */
+  function normalizarGoles() {
+    const lista = (borrador.posiciones ?? []).slice(0, borrador.goles)
+    while (lista.length < borrador.goles) lista.push({})
+    borrador.posiciones = lista
+  }
+
   function cablearD() {
     const campo = document.getElementById('campo-d')
     if (!campo) return
-    borrador.posiciones = borrador.posiciones ?? []
+    normalizarGoles()
 
     const redibujar = () => {
       campo.hidden = borrador.goles === 0
@@ -2082,18 +2220,50 @@
         borrador.posiciones = []
         return
       }
-      const faltan = borrador.goles - borrador.posiciones.length
-      document.getElementById('poner-d').innerHTML = dibujoDeLaD(borrador.posiciones, {
-        poner: faltan > 0
-      })
+      normalizarGoles()
+      const puestos = borrador.posiciones.filter((g) => typeof g.x === 'number')
+      const faltan = borrador.goles - puestos.length
+      document.getElementById('poner-d').innerHTML = dibujoDeLaD(puestos, { poner: faltan > 0 })
       document.getElementById('pie-d').innerHTML =
         faltan > 0
           ? `Toca dónde marcaste. ${faltan === borrador.goles ? '' : `Faltan <b>${faltan}</b>.`}`
           : `Listo. <button type="button" class="boton" data-tipo="callado" id="borrar-puntos"
                style="padding:0 0.3rem">Empezar de nuevo</button>`
 
+      // Y el cuarto de cada uno, debajo. Opcional: un gol sin cuarto sigue
+      // siendo un gol, y obligar a ponerlo haría más lento justo el momento en
+      // que estás cansado entre partido y partido.
+      document.getElementById('cuando-d').innerHTML = borrador.posiciones
+        .map(
+          (g, k) =>
+            `<div class="gol-fila"><span>Gol ${k + 1}</span>` +
+            `<div class="fichas" data-gol="${k}">` +
+            [1, 2, 3, 4]
+              .map(
+                (c) =>
+                  `<button type="button" data-c="${c}" aria-pressed="${g.cuarto === c}">${c}º</button>`
+              )
+              .join('') +
+            `</div></div>`
+        )
+        .join('')
+
+      document.getElementById('cuando-d').addEventListener('click', (e) => {
+        const b = e.target.closest('button')
+        if (!b) return
+        const fila = b.closest('.fichas')
+        const g = borrador.posiciones[Number(fila.dataset.gol)]
+        const c = Number(b.dataset.c)
+        // Volver a tocar el mismo lo apaga: es opcional de verdad.
+        g.cuarto = g.cuarto === c ? undefined : c
+        fila.querySelectorAll('button').forEach((x) => {
+          x.setAttribute('aria-pressed', String(Number(x.dataset.c) === g.cuarto))
+        })
+      })
+
       document.getElementById('svg-d').addEventListener('click', (e) => {
-        if (borrador.posiciones.length >= borrador.goles) return
+        const hueco = borrador.posiciones.find((g) => typeof g.x !== 'number')
+        if (!hueco) return
         const punto = puntoDelToque(e.currentTarget, e)
         // Fuera de la D no se acepta: un gol de hockey no existe fuera de ahí,
         // y aceptarlo sería guardar algo imposible.
@@ -2101,11 +2271,17 @@
           document.getElementById('pie-d').textContent = 'Eso está fuera de la D.'
           return
         }
-        borrador.posiciones.push(punto)
+        hueco.x = punto.x
+        hueco.y = punto.y
         redibujar()
       })
       document.getElementById('borrar-puntos')?.addEventListener('click', () => {
-        borrador.posiciones = []
+        // Se borran los sitios, no los cuartos: son dos datos distintos y
+        // «empezar de nuevo» con la D no tiene por qué tirar el otro.
+        for (const g of borrador.posiciones) {
+          delete g.x
+          delete g.y
+        }
         redibujar()
       })
     }
@@ -2783,6 +2959,52 @@
     caja.dataset.entrenos = JSON.stringify(conAlgo)
   }
 
+
+  // ---------- contra quién ----------
+
+  /*
+    Sale gratis: el rival ya se guarda en cada partido. Es lo que uno quiere
+    mirar el día antes de jugar contra ellos, y hasta ahora esa información
+    estaba ahí desperdigada en la lista sin que nadie la juntara.
+  */
+  function porRival() {
+    const mapa = new Map()
+    for (const x of todosLosPartidos()) {
+      const clave = x.rival.trim()
+      const r = mapa.get(clave) ?? { rival: clave, jugados: 0, g: 0, e: 0, p: 0, goles: 0 }
+      r.jugados++
+      if (x.nuestros > x.suyos) r.g++
+      else if (x.nuestros < x.suyos) r.p++
+      else r.e++
+      r.goles += x.goles
+      mapa.set(clave, r)
+    }
+    // Por veces jugadas, y a igualdad por nombre: el orden tiene que ser el
+    // mismo cada vez que abres, o parece que cambian solos.
+    return [...mapa.values()].sort(
+      (a, b) => b.jugados - a.jugados || a.rival.localeCompare(b.rival)
+    )
+  }
+
+  function pintarRivales() {
+    const lista = porRival()
+    document.getElementById('caja-rivales').hidden = lista.length === 0
+    if (lista.length === 0) return
+
+    document.getElementById('rivales').innerHTML = lista
+      .map(
+        (r) =>
+          `<div class="rival-fila">` +
+          `<span><span class="quien">${escapar(r.rival)}</span>` +
+          `<span class="cuantos">${r.jugados} ${r.jugados === 1 ? 'partido' : 'partidos'}</span></span>` +
+          `<span class="balance"><span class="g">${r.g}</span>` +
+          `<span class="e">–${r.e}–</span><span class="p">${r.p}</span></span>` +
+          `<span class="mios" data-cero="${r.goles === 0 ? 'si' : 'no'}">` +
+          `${r.goles} ${r.goles === 1 ? 'gol' : 'goles'}</span></div>`
+      )
+      .join('')
+  }
+
   // ---------- la D ----------
 
   /* Medidas reales de la cancha, en metros. */
@@ -2837,22 +3059,66 @@
     return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
   }
 
+  /* Todos los goles con su sitio puesto. Los que no lo tienen no van al mapa. */
   const todosLosGoles = () =>
     todosLosPartidos().flatMap((x) =>
-      (x.posiciones ?? []).map((g) => ({ ...g, rival: x.rival, fecha: x.fecha }))
+      (x.posiciones ?? [])
+        .filter((g) => typeof g.x === 'number')
+        .map((g) => ({ ...g, rival: x.rival, fecha: x.fecha }))
     )
+
+  /* Y todos, con sitio o sin él, para contar por cuarto. */
+  const todosLosGolesDetallados = () =>
+    todosLosPartidos().flatMap((x) => x.posiciones ?? [])
+
+  function pintarCuartos() {
+    const conCuarto = todosLosGolesDetallados().filter((g) => g.cuarto)
+    const caja = document.getElementById('reparto-cuartos')
+    if (conCuarto.length === 0) {
+      caja.innerHTML =
+        '<p class="detalle" style="margin-top:0.6rem">Marca el cuarto de tus goles y acá ' +
+        'verás cuándo apareces.</p>'
+      return
+    }
+    const cuenta = [1, 2, 3, 4].map((c) => conCuarto.filter((g) => g.cuarto === c).length)
+    const tope = Math.max(...cuenta)
+    const mejor = cuenta.indexOf(tope) + 1
+
+    caja.innerHTML =
+      `<p class="rotulo" style="margin:1rem 0 0">Cuándo marcas</p>` +
+      `<div class="cuartos">` +
+      cuenta
+        .map(
+          (n) =>
+            `<div><b>${n}</b><i style="height:${n === 0 ? 3 : Math.round((n / tope) * 44)}px"></i></div>`
+        )
+        .join('') +
+      `</div><div class="pies-cuartos">` +
+      [1, 2, 3, 4].map((c) => `<span>${c}º</span>`).join('') +
+      `</div>` +
+      `<p class="detalle" style="margin-top:0.5rem">Tu cuarto es el <b>${mejor}º</b>, ` +
+      `con ${tope} de ${conCuarto.length} ${conCuarto.length === 1 ? 'gol' : 'goles'}.</p>`
+  }
 
   function pintarMapaD() {
     const goles = todosLosGoles()
+    const conCuarto = todosLosGolesDetallados().filter((g) => g.cuarto).length
     const caja = document.getElementById('caja-d')
-    // La tarjeta no existe hasta que haya al menos un gol ubicado: una D vacía
-    // no enseña nada y ocupa media pantalla.
-    caja.hidden = goles.length === 0
-    if (goles.length === 0) return
+    // La tarjeta no existe hasta que haya algo que enseñar: una D vacía no dice
+    // nada y ocupa media pantalla.
+    caja.hidden = goles.length === 0 && conCuarto === 0
+    if (caja.hidden) return
+    if (goles.length === 0) {
+      document.getElementById('cuenta-d').textContent = ''
+      document.getElementById('mapa-d').innerHTML = ''
+      document.getElementById('detalle-d').textContent = ''
+      return pintarCuartos()
+    }
 
     document.getElementById('cuenta-d').textContent =
       `${goles.length} ${goles.length === 1 ? 'gol' : 'goles'}`
     document.getElementById('mapa-d').innerHTML = dibujoDeLaD(goles)
+    pintarCuartos()
 
     // Lo que el mapa cuenta, dicho en palabras: un dibujo bonito que no se lee
     // solo necesita una frase debajo.
@@ -3207,8 +3473,36 @@
     const celda = e.target.closest('.celda')
     if (!celda || celda.disabled) return
     soloUnoMarcado(document.getElementById('mapa'), celda)
-    document.getElementById('detalle-mapa').innerHTML = contarDia(celda.dataset.fecha)
+    mostrarDia(celda.dataset.fecha)
   })
+
+  /*
+    Al tocar un día no solo se cuenta lo que hubo: se puede arreglar. Es el
+    único sitio donde se puede recuperar un entrenamiento que se te paso, y por
+    eso el botón vive aquí y no escondido en otra pantalla.
+  */
+  function mostrarDia(fecha) {
+    const caja = document.getElementById('detalle-mapa')
+    const tiene = estado.entrenamientos.some((x) => x.fecha === fecha)
+    caja.innerHTML =
+      contarDia(fecha) +
+      `<br><button type="button" class="boton" data-tipo="callado" data-fecha="${fecha}"` +
+      ` id="tocar-dia" style="padding:0.35rem 0">` +
+      (tiene ? 'Quitar el entrenamiento' : '+ Marcar que entrené') +
+      `</button>` +
+      (tiene
+        ? ` <button type="button" class="boton" data-tipo="callado" data-fecha="${fecha}"` +
+          ` id="detallar-dia" style="padding:0.35rem 0.5rem">Goles</button>`
+        : '')
+
+    document.getElementById('tocar-dia').addEventListener('click', () => {
+      alternarDia(fecha)
+      mostrarDia(fecha)
+    })
+    document.getElementById('detallar-dia')?.addEventListener('click', () => {
+      abrirDetalleEntreno(fecha)
+    })
+  }
 
   document.getElementById('barras').addEventListener('click', (e) => {
     const col = e.target.closest('.columna')
