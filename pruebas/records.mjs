@@ -1,0 +1,107 @@
+/**
+ * Récords.
+ *
+ * La parte delicada no es calcularlos: es cuándo felicitar. Dos errores
+ * posibles y los dos silenciosos:
+ *
+ * · Felicitar de más — abres la app por primera vez con la temporada ya dentro
+ *   y te saltan cuatro medallas por cosas que hiciste hace un mes. La primera
+ *   vez no puede celebrar nada.
+ * · Felicitar de menos — bates tu mejor partido y no pasa nada, que es
+ *   exactamente lo que hace que la app deje de sentirse viva.
+ */
+import { cargar, js, trozo } from './marco.mjs'
+
+const fuente =
+  'export let estado = { meta: 3, entrenamientos: [], dias: [], logros: {}, records: null }\n' +
+  'export const ponerEstado = (e) => { estado = { logros: {}, records: null, ...e } }\n' +
+  'const guardar = () => {}\n' +
+  trozo('function iso(', '// ---------- entrenamientos') +
+  trozo('function todosLosPartidos', '// ---------- logros') +
+  trozo('const LOGROS =', 'function pintarLogros') +
+  trozo('  const RECORDS =', '  function pintarRecords') +
+  '\nexport { RECORDS, recordsAhora, revisarRecords, iso, desdeIso }'
+
+const M = await cargar(fuente)
+
+let ok = 0
+let mal = 0
+const si = (n, c, d = '') => {
+  console.log((c ? '  ok    ' : ' FALLA  ') + n + (d ? ' — ' + d : ''))
+  c ? ok++ : mal++
+}
+const eq = (n, a, b) => si(n, JSON.stringify(a) === JSON.stringify(b), JSON.stringify(a))
+
+const partido = (goles, asistencias = 0, rival = 'A') => ({
+  rival, nuestros: 1, suyos: 1, goles, asistencias
+})
+const conPartidos = (...ps) => [{ fecha: '2026-09-05', torneo: 'Liga', partidos: ps }]
+
+console.log('\n- los récords salen de los datos -')
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: conPartidos(partido(1), partido(3), partido(2)) })
+eq('el mejor partido son 3 goles', M.recordsAhora()['goles-partido'].valor, 3)
+eq('y dice contra quién fue', M.recordsAhora()['goles-partido'].cuando.startsWith('contra A'), true)
+
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: conPartidos(partido(1, 3), partido(2, 0)) })
+eq('el mejor aporte suma goles y asistencias', M.recordsAhora()['aporte-partido'].valor, 4)
+
+console.log('\n- sin datos, todo en cero y sin reventar -')
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: [] })
+eq('mejor partido', M.recordsAhora()['goles-partido'].valor, 0)
+eq('mejor semana', M.recordsAhora()['semana'].valor, 0)
+eq('racha', M.recordsAhora()['racha'].valor, 0)
+
+console.log('\n- la PRIMERA vez no felicita -')
+// Este es el caso real: la app ya tiene una temporada dentro y recién ahora
+// aprende a llevar récords.
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: conPartidos(partido(3)) })
+eq('con datos ya cargados, ningún récord batido', M.revisarRecords().length, 0)
+si('pero los deja anotados', M.estado.records['goles-partido'] === 3)
+
+console.log('\n- y a partir de ahí, sí -')
+M.estado.dias = conPartidos(partido(3), partido(4, 0, 'B'))
+const batidos = M.revisarRecords()
+// Dos, y esta bien que sean dos: el aporte incluye los goles, asi que subir de
+// 3 a 4 goles bate el mejor partido Y el mejor aporte. Mi expectativa decia uno.
+eq('dos records batidos a la vez', batidos.length, 2)
+si('uno es el del mejor partido',
+  batidos.some((r) => r.nombre.includes('goles en un partido')),
+  batidos.map((r) => r.nombre).join(' / '))
+si('y el otro el del aporte', batidos.some((r) => r.nombre.includes('aporte')))
+si('los dos con la marca nueva', batidos.every((r) => r.marca === '4'))
+
+console.log('\n- igualar no es batir -')
+M.estado.dias = conPartidos(partido(3), partido(4, 0, 'B'), partido(4, 0, 'C'))
+eq('empatar el récord no felicita', M.revisarRecords().length, 0)
+eq('y el récord sigue siendo 4', M.estado.records['goles-partido'], 4)
+
+console.log('\n- borrar un partido no inventa un récord nuevo -')
+// Al quitar el mejor partido el récord baja. Eso no puede leerse como logro.
+M.estado.dias = conPartidos(partido(1))
+eq('bajar no felicita', M.revisarRecords().length, 0)
+eq('y el récord guardado baja con los datos', M.estado.records['goles-partido'], 1)
+
+console.log('\n- dos récords a la vez se anuncian los dos -')
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: conPartidos(partido(1, 0)) })
+M.revisarRecords()
+M.estado.dias = conPartidos(partido(1, 0), partido(5, 4, 'B'))
+const dos = M.revisarRecords()
+eq('mejor partido y mejor aporte', dos.length, 2)
+
+console.log('\n- la semana más cargada -')
+const dias = (lunesIso, n) =>
+  Array.from({ length: n }, (_, i) => {
+    const d = M.desdeIso(lunesIso)
+    d.setDate(d.getDate() + i)
+    return { fecha: M.iso(d) }
+  })
+M.ponerEstado({
+  meta: 3,
+  entrenamientos: [...dias('2026-03-02', 2), ...dias('2026-03-09', 4)],
+  dias: []
+})
+eq('cuenta la mejor, no la última', M.recordsAhora()['semana'].valor, 4)
+si('y dice cuál semana fue', M.recordsAhora()['semana'].cuando.includes('semana del'))
+
+console.log(`\n${ok} ok, ${mal} fallos`)
+process.exit(mal ? 1 : 0)

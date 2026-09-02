@@ -1,0 +1,132 @@
+/**
+ * Revisión estructural de la página.
+ *
+ * Existe por un error concreto: al reescribir una pantalla corté el archivo por
+ * posiciones en vez de por anclas y me llevé cuatro funciones enteras por
+ * delante. `node --check` pasó sin quejarse, porque lo que quedaba seguía siendo
+ * JavaScript válido.
+ *
+ * Un archivo que compila no es un archivo correcto. Esto comprueba lo que un
+ * analizador de sintaxis no puede: que las piezas sigan estando y sigan
+ * conectadas entre sí.
+ */
+import { js, marcado } from '../pruebas/marco.mjs'
+
+let mal = 0
+
+function ok(nombre, cond, detalle = '') {
+  console.log((cond ? '  ok    ' : ' FALLA  ') + nombre + (detalle ? ' — ' + detalle : ''))
+  if (!cond) mal++
+}
+
+// ---------- estilos ----------
+
+const css = marcado.slice(marcado.indexOf('<style>'), marcado.indexOf('</style>'))
+const abre = (css.match(/{/g) ?? []).length
+const cierra = (css.match(/}/g) ?? []).length
+ok('llaves del CSS equilibradas', abre === cierra, `${abre} vs ${cierra}`)
+
+// ---------- etiquetas ----------
+
+/*
+  Los comentarios se quitan antes de contar: un comentario que dice «un <button>
+  centra su contenido» no es un botón abierto. Contarlo avisaba en falso, y una
+  comprobación que grita en falso deja de leerse — peor que no tenerla.
+*/
+const limpio = marcado.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '')
+
+for (const t of ['div', 'section', 'nav', 'button', 'header', 'p']) {
+  const a = (limpio.match(new RegExp(`<${t}[\\s>]`, 'g')) ?? []).length
+  const c = (limpio.match(new RegExp(`</${t}>`, 'g')) ?? []).length
+  ok(`<${t}> abre y cierra igual`, a === c, `${a} vs ${c}`)
+}
+
+// ---------- identificadores ----------
+
+const sacar = (texto, re) => new Set([...texto.matchAll(re)].map((m) => m[1]))
+
+const enMarcado = sacar(marcado, /id="([\w-]+)"/g)
+const enPlantillas = sacar(js, /id="([\w-]+)"/g)
+const buscados = sacar(js, /getElementById\('([\w-]+)'\)/g)
+
+const sinDestino = [...buscados].filter((i) => !enMarcado.has(i) && !enPlantillas.has(i)).sort()
+ok(`los ${buscados.size} ids buscados tienen destino`, sinDestino.length === 0, sinDestino.join(', '))
+
+// ---------- funciones ----------
+
+/*
+  Las piezas que sostienen la app. Si alguna desaparece, la página sigue
+  compilando y deja de funcionar en silencio: un botón que no responde, un
+  gráfico que no se dibuja, y ningún error en ninguna parte.
+*/
+const CLAVE = [
+  'leer', 'guardar', 'pintar', 'iso', 'desdeIso', 'lunesDe',
+  'entrenoHoy', 'alternarHoy', 'racha', 'totales',
+  'pintarNivel', 'pintarMapa', 'pintarLogros', 'pintarRecords', 'pintarGrafico',
+  'pintarMapaD', 'pintarDias', 'pintarProximo', 'pintarAvisoCopia',
+  'dibujoDeLaD', 'dentroDeLaD', 'puntoDelToque', 'todosLosGoles',
+  'graficoAporte', 'graficoMinutos', 'graficoSemanas', 'graficoEntrenos',
+  'recordsAhora', 'revisarRecords', 'revisarLogros', 'resumenLogros',
+  'abrirPartido', 'abrirEdicion', 'guardarPartido', 'borrarPartido',
+  'abrirDetalleEntreno', 'abrirDatos', 'abrirResumen', 'abrirProximo',
+  'restaurarDesde', 'irA', 'celebrar', 'cablearHoja', 'cablearD'
+]
+
+const perdidas = CLAVE.filter((f) => !new RegExp(`(function|const)\\s+${f}\\b`).test(js))
+ok(`las ${CLAVE.length} funciones principales siguen ahí`, perdidas.length === 0, perdidas.join(', '))
+
+// Definida y nunca llamada es código muerto, o una conexión que se soltó.
+const sueltas = CLAVE.filter((f) => (js.match(new RegExp(`\\b${f}\\b`, 'g')) ?? []).length < 2)
+ok('ninguna quedó definida sin usar', sueltas.length === 0, sueltas.join(', '))
+
+// ---------- temas ----------
+
+/*
+  Todo token de color tiene que estar definido en los tres estados del tema:
+  claro, oscuro por sistema y oscuro por elección. Uno que falte en un bloque no
+  rompe nada — simplemente ese color no se aplica, y la página se ve con el texto
+  de un tema sobre el fondo del otro.
+*/
+const finClaro = css.indexOf('@media (prefers-color-scheme: dark)')
+const finMedia = css.indexOf(':root[data-theme="dark"]')
+const bloques = {
+  claro: css.slice(css.indexOf(':root {'), finClaro),
+  sistema: css.slice(finMedia === -1 ? finClaro : finClaro, finMedia),
+  eleccion: css.slice(finMedia, css.indexOf('* { box-sizing'))
+}
+
+/*
+  La lista sale de la UNIÓN de los tres bloques, no de uno.
+
+  La primera versión la sacaba del bloque del tema oscuro por elección, y por
+  eso no servía: al borrar un color de ahí, desaparecía también de la lista de
+  cosas que buscar, y la comprobación pasaba tan contenta. Una comprobación que
+  deduce lo que espera de lo mismo que está revisando no revisa nada.
+*/
+const todos = new Set(
+  Object.values(bloques).flatMap((b) => [...b.matchAll(/(--[\w-]+):/g)].map((m) => m[1]))
+)
+const incompletos = [...todos]
+  .filter((t) => !Object.values(bloques).every((b) => b.includes(t + ':')))
+  .sort()
+
+/*
+  Lo que a propósito no cambia con el tema.
+
+  · Las medidas no son colores.
+  · La cancha es azul de día y de noche: esa tarjeta es una superficie
+    comprometida, no se adapta, y ese fue el criterio desde el primer día.
+
+  La lista es corta y explícita para que siga sirviendo: cualquier color NUEVO
+  que no esté en los tres bloques salta, que es justo lo que hace falta.
+*/
+const A_PROPOSITO = ['--paso', '--radio', '--cancha', '--cancha-honda', '--pelota', '--linea']
+const deColor = incompletos.filter((t) => !A_PROPOSITO.includes(t))
+ok(
+  `los ${todos.size - A_PROPOSITO.length} colores existen en los tres temas`,
+  deColor.length === 0,
+  deColor.join(', ')
+)
+
+console.log(mal ? `\nrevisión: ${mal} problemas` : '\nrevisión: todo bien')
+process.exit(mal ? 1 : 0)
