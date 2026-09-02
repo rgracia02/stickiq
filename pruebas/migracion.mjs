@@ -83,14 +83,20 @@ const nuevo = leyendo({
     {
       fecha: '2026-09-05',
       torneo: 'Copa',
-      partidos: [{ rival: 'Prince', nuestros: 2, suyos: 2, goles: 1, asistencias: 1, minutos: 50 }]
+      partidos: [
+        { rival: 'Prince', nuestros: 2, suyos: 2, goles: 1, asistencias: 1, duracion: 60, minutos: 50 },
+        { rival: 'Manquehue', nuestros: 1, suyos: 1, goles: 0, minutos: 60 }
+      ]
     }
   ]
 })
 eq('los goles del entrenamiento se mantienen', nuevo.entrenamientos[0].goles, 2)
 eq('y sus asistencias', nuevo.entrenamientos[0].asistencias, 1)
 eq('las asistencias del partido no se pisan con null', nuevo.dias[0].partidos[0].asistencias, 1)
-eq('ni los minutos', nuevo.dias[0].partidos[0].minutos, 50)
+eq('ni los minutos, si viene la duracion detras', nuevo.dias[0].partidos[0].minutos, 50)
+// Los minutos sin duracion los puso la app, no el: salieron de suponer que un
+// partido de 11 dura sesenta, y esa suposicion resulto falsa. Se descartan.
+eq('y sin ella se descartan, aunque sea de 11', nuevo.dias[0].partidos[1].minutos, null)
 
 console.log('\n- mezcla de las dos formas -')
 const mixto = leyendo({

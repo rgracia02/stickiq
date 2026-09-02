@@ -71,7 +71,8 @@ const CLAVE = [
   'abrirDetalleEntreno', 'abrirDatos', 'abrirResumen', 'abrirProximo',
   'restaurarDesde', 'irA', 'celebrar', 'cablearHoja', 'cablearD',
   'alternarDia', 'mostrarDia', 'normalizarGoles', 'pintarCuartos', 'todosLosGolesDetallados',
-  'porRival', 'pintarRivales', 'unReparto', 'formatoDe', 'resultado', 'seFueAPenales', 'claveRival', 'rivalesConocidos', 'loQueViene', 'contarLogro', 'duracionDe', 'proporcionDe', 'aDatoLimpio'
+  'porRival', 'pintarRivales', 'unReparto', 'resultado', 'seFueAPenales', 'claveRival', 'rivalesConocidos', 'loQueViene', 'contarLogro', 'duracionDe', 'proporcionDe', 'aDatoLimpio',
+  'periodosDe', 'estructuraDe', 'comoSeJuega', 'recortarPeriodos', 'pintarDuracion', 'sugerirComoSeJuega'
 ]
 
 const perdidas = CLAVE.filter((f) => !new RegExp(`(function|const)\\s+${f}\\b`).test(js))
@@ -80,6 +81,31 @@ ok(`las ${CLAVE.length} funciones principales siguen ahí`, perdidas.length === 
 // Definida y nunca llamada es código muerto, o una conexión que se soltó.
 const sueltas = CLAVE.filter((f) => (js.match(new RegExp(`\\b${f}\\b`, 'g')) ?? []).length < 2)
 ok('ninguna quedó definida sin usar', sueltas.length === 0, sueltas.join(', '))
+
+// ---------- escuchas que se acumulan ----------
+
+/*
+  `cablearD` cuelga escuchas sobre elementos que NO se reemplazan al redibujar.
+  Llamarla dos veces sobre la misma hoja duplica el interruptor de los periodos:
+  tocar una ficha lo ejecuta dos veces —lo pone y lo quita— y no pasa nada, sin
+  ningun error en consola. Ya ocurrio dos veces; la segunda la encontro el, no
+  yo, y solo porque uso la app.
+
+  Asi que la guarda no es un comentario: se revisa que exista.
+*/
+const cuerpoD = js.slice(js.indexOf('function cablearD'), js.indexOf('// ---------- mis datos'))
+const hayGuarda = /dataset[.]cableado/.test(cuerpoD)
+const hayMarca = /campo[.]dataset[.]cableado/.test(cuerpoD)
+ok(
+  'cablearD no puede cablear dos veces la misma hoja',
+  hayGuarda,
+  hayGuarda ? '' : 'falta la guarda antes de addEventListener'
+)
+ok(
+  'y la marca vive en un elemento que la hoja vuelve a crear',
+  hayMarca,
+  hayMarca ? '' : 'la marca tiene que ir en #campo-d, no en algo permanente'
+)
 
 // ---------- temas ----------
 

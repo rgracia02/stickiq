@@ -1780,6 +1780,9 @@
             // periodo solo ofrecian cuatro cuartos, asi que eso es lo que
             // significaban. Si alguno era de 7, se corrige editandolo.
             formato: 11,
+            // Los guardados antes ofrecian cuatro cuartos en los de 11 y dos
+            // tiempos en los de 7: eso es lo que significaban sus periodos.
+            periodos: x.formato === 7 ? 2 : 4,
             ...x
           }))
         })),
@@ -1823,8 +1826,19 @@
     dejarlo seria seguir afirmando algo que salio de una premisa falsa. Los de 11
     no se tocan, porque ahi sesenta si es el largo real.
   */
+  /*
+    Los minutos solo valen si hay una duracion anotada.
+
+    Los partidos guardados antes llevan 60, 45, 30 o 15 porque la app supuso el
+    largo, no porque el lo midiera — y esa suposicion resulto falsa en los dos
+    formatos: hay ligas de 11 que se juegan en dos tiempos de veinte. Cualquier
+    minutaje sin duracion detras se descarta.
+
+    El resto del partido no se toca. Poniendole la duracion en la lista, la ficha
+    vuelve a calcular sola.
+  */
   function aDatoLimpio(x) {
-    if (x.formato === 7 && typeof x.duracion !== 'number' && typeof x.minutos === 'number') {
+    if (typeof x.duracion !== 'number' && typeof x.minutos === 'number') {
       return { ...x, minutos: null }
     }
     return x
@@ -2099,11 +2113,23 @@
 
   function abrirPartido() {
     const ultimo = [...estado.dias].sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+    const asi = comoSeJuega(ultimo?.torneo, 11)
     borrador = {
       asistencias: 0,
       minutos: null,
-      duracion: null,
+      duracion: asi.duracion,
       formato: 11,
+      periodos: asi.periodos,
+      /*
+        Lo de arriba lo sugirio la app mirando el torneo anterior; no lo eligio
+        el. La diferencia importa: al cambiar de formato hay que volver a
+        sugerir, pero nunca pisar lo que el ya toco.
+
+        Sin esto, pasar de «De 11» a «De 7» se quedaba con los 40 minutos de la
+        liga de once. Un numero que puso la app, mostrado como si lo hubiera
+        puesto el — el mismo error que ya habia arreglado dos veces.
+      */
+      eligio: { periodos: false, duracion: false },
       penales: null,
       fecha: hoy(),
       // El torneo se hereda del último día: en una fecha juegas tres partidos
@@ -2178,13 +2204,27 @@
       </div>
 
       <div class="campo">
-        <label class="rotulo">Formato</label>
+        <label class="rotulo">Cuántos jugaban</label>
         <div class="fichas" id="formato">
           ${[11, 7]
             .map(
               (f) =>
                 `<button type="button" data-f="${f}" aria-pressed="${borrador.formato === f}">` +
-                `De ${f} · ${FORMATOS[f].dice}</button>`
+                `${FORMATOS[f]}</button>`
+            )
+            .join('')}
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Cómo se jugó</label>
+        <div class="fichas" id="estructura">
+          ${[2, 4]
+            .map(
+              (n) =>
+                `<button type="button" data-per="${n}" aria-pressed="${
+                  periodosDe(borrador) === n
+                }">${ESTRUCTURAS[n].nombre}</button>`
             )
             .join('')}
         </div>
@@ -2207,23 +2247,23 @@
         ${contador('asistencias', borrador.asistencias ?? 0)}
       </div>
 
-      <div class="campo" id="campo-duracion" ${borrador.formato === 7 ? '' : 'hidden'}>
-        <label class="rotulo">Cuánto duró <span style="text-transform:none;font-weight:400">(los de 7 varían)</span></label>
+      <div class="campo" id="campo-duracion">
+        <label class="rotulo">Cuánto duró <span style="text-transform:none;font-weight:400">(en total)</span></label>
         <div class="fichas" id="duracion">
-          ${DURACIONES_7.map(
+          ${DURACIONES.map(
             (d) =>
               `<button type="button" data-dur="${d}" aria-pressed="${
                 borrador.duracion === d
               }">${d} min</button>`
           ).join('')}
           <button type="button" data-dur="otra" aria-pressed="${
-            borrador.duracion && !DURACIONES_7.includes(borrador.duracion)
+            borrador.duracion && !DURACIONES.includes(borrador.duracion)
           }">Otra</button>
         </div>
         <input id="duracion-otra" type="number" min="1" max="120" class="caja-texto"
                style="margin-top:0.4rem;font:inherit" placeholder="Minutos"
-               value="${borrador.duracion && !DURACIONES_7.includes(borrador.duracion) ? borrador.duracion : ''}"
-               ${borrador.duracion && !DURACIONES_7.includes(borrador.duracion) ? '' : 'hidden'}>
+               value="${borrador.duracion && !DURACIONES.includes(borrador.duracion) ? borrador.duracion : ''}"
+               ${borrador.duracion && !DURACIONES.includes(borrador.duracion) ? '' : 'hidden'}>
       </div>
 
       <div class="campo">
@@ -2376,6 +2416,14 @@
     })
   }
 
+  /* Un «4º cuarto» no existe en un partido de dos tiempos. */
+  function recortarPeriodos() {
+    const n = periodosDe(borrador)
+    for (const g of borrador.posiciones ?? []) {
+      if (g.cuarto > n) delete g.cuarto
+    }
+  }
+
   function cablearFichas() {
     document.getElementById('penales')?.addEventListener('click', (e) => {
       const b = e.target.closest('button')
@@ -2394,19 +2442,65 @@
       document.querySelectorAll('#formato button').forEach((x) => {
         x.setAttribute('aria-pressed', String(Number(x.dataset.f) === borrador.formato))
       })
-      // Cambiar de formato tira los periodos ya puestos: un «4º cuarto» no
-      // existe en un partido de dos tiempos, y dejarlo guardado seria peor que
-      // pedirlo de nuevo.
-      const periodos = formatoDe(borrador).periodos
-      for (const g of borrador.posiciones ?? []) {
-        if (g.cuarto > periodos) delete g.cuarto
-      }
-      // Y la duración: la de 11 es fija, la de 7 hay que preguntarla.
-      const cajaDur = document.getElementById('campo-duracion')
-      if (cajaDur) cajaDur.hidden = borrador.formato !== 7
-      if (borrador.formato !== 7) borrador.duracion = null
+      // La Copa de 7 y la Copa de 11 son competencias distintas: al cambiar de
+      // formato se trae como se jugo ESE torneo con ESE formato. Lo que el ya
+      // haya tocado a mano manda — solo se rellena lo que sigue en blanco.
+      sugerirComoSeJuega()
       cablearD()
     })
+
+    /*
+      Trae como se jugo ese torneo con ese formato, sin pisar lo que el eligio.
+
+      Se llama al cambiar de formato y al escribir el torneo, porque los dos
+      cambian cual es la competencia: la Copa de 7 y la Copa de 11 no se juegan
+      igual, y «Liga Metro» tampoco se parece a «Liga Metro» hasta que termina
+      de escribirlo.
+    */
+    const sugerirComoSeJuega = () => {
+      const asi = comoSeJuega(document.getElementById('torneo')?.value, borrador.formato)
+      if (!borrador.eligio.periodos) borrador.periodos = asi.periodos
+      if (!borrador.eligio.duracion) borrador.duracion = asi.duracion
+      document.querySelectorAll('#estructura button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.per) === periodosDe(borrador)))
+      })
+      pintarDuracion()
+      // Un «4o cuarto» no existe en un partido de dos tiempos: dejarlo guardado
+      // seria peor que pedirlo de nuevo.
+      recortarPeriodos()
+      // Y los minutos se recalculan: la misma ficha vale distinto en un partido
+      // de cuarenta que en uno de doce.
+      const parte = proporcionDe(borrador)
+      borrador.minutos =
+        parte !== null && duracionDe(borrador) ? Math.round(parte * duracionDe(borrador)) : null
+      pintarMinutos()
+    }
+
+    document.getElementById('torneo')?.addEventListener('change', sugerirComoSeJuega)
+
+    /*
+      Las fichas de duracion, repintadas desde el borrador.
+
+      Un solo camino de pintado. Antes el click lo hacia a mano y el cambio de
+      formato no lo hacia en absoluto: traia la duracion recordada del torneo y
+      la dejaba invisible, con todas las fichas apagadas encima de un dato que
+      si estaba puesto.
+    */
+    const pintarDuracion = (abrirOtra = false) => {
+      const otra = document.getElementById('duracion-otra')
+      const rara = borrador.duracion !== null && !DURACIONES.includes(borrador.duracion)
+      const abierta = abrirOtra || rara
+      if (otra) {
+        otra.hidden = !abierta
+        otra.value = rara ? borrador.duracion : ''
+      }
+      document.querySelectorAll('#duracion button').forEach((x) => {
+        x.setAttribute(
+          'aria-pressed',
+          String(x.dataset.dur === 'otra' ? abierta : Number(x.dataset.dur) === borrador.duracion)
+        )
+      })
+    }
 
     const pintarMinutos = () => {
       const dur = duracionDe(borrador)
@@ -2438,24 +2532,30 @@
       pintarMinutos()
     })
 
+    document.getElementById('estructura')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      borrador.periodos = Number(b.dataset.per)
+      borrador.eligio.periodos = true
+      document.querySelectorAll('#estructura button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.per) === borrador.periodos))
+      })
+      recortarPeriodos()
+      cablearD()
+    })
+
     document.getElementById('duracion')?.addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
-      const otra = document.getElementById('duracion-otra')
       if (b.dataset.dur === 'otra') {
-        otra.hidden = false
-        otra.focus()
+        pintarDuracion(true)
+        document.getElementById('duracion-otra')?.focus()
       } else {
         const d = Number(b.dataset.dur)
         borrador.duracion = borrador.duracion === d ? null : d
-        otra.hidden = true
+        borrador.eligio.duracion = true
+        pintarDuracion()
       }
-      document.querySelectorAll('#duracion button').forEach((x) => {
-        x.setAttribute(
-          'aria-pressed',
-          String(x.dataset.dur === 'otra' ? !otra.hidden : Number(x.dataset.dur) === borrador.duracion)
-        )
-      })
       // Cambiar la duracion cambia a cuantos minutos equivale la ficha puesta.
       const parte = proporcionDe(borrador)
       borrador.minutos =
@@ -2466,6 +2566,7 @@
     document.getElementById('duracion-otra')?.addEventListener('input', (e) => {
       const n = Number(e.target.value)
       borrador.duracion = n > 0 && n <= 120 ? n : null
+      borrador.eligio.duracion = true
       pintarMinutos()
     })
 
@@ -2508,7 +2609,8 @@
       suyos: borrador.suyos,
       goles: borrador.goles,
       formato: borrador.formato ?? 11,
-      duracion: borrador.formato === 7 ? (borrador.duracion ?? null) : null,
+      periodos: periodosDe(borrador),
+      duracion: borrador.duracion ?? null,
       // Solo tiene sentido con el marcador empatado: guardarlo en un 3-1 sería
       // un dato que contradice al otro.
       penales: borrador.nuestros === borrador.suyos ? (borrador.penales ?? null) : null,
@@ -2541,7 +2643,15 @@
     const dia = estado.dias.find((d) => d.fecha === fecha && d.torneo === torneo)
     const p = dia?.partidos[indice]
     if (!p) return
-    borrador = { ...p, fecha, torneo, editando: { fecha, torneo, indice } }
+    // Un partido guardado trae datos que el anoto: son hechos, no sugerencias,
+    // y cambiar de formato no puede reescribirlos.
+    borrador = {
+      ...p,
+      fecha,
+      torneo,
+      eligio: { periodos: true, duracion: true },
+      editando: { fecha, torneo, indice }
+    }
     pintarHoja()
     document.getElementById('telon').hidden = false
   }
@@ -2675,12 +2785,12 @@
           (g, k) =>
             `<div class="gol-fila"><span>Gol ${k + 1}</span>` +
             `<div class="fichas" data-gol="${k}">` +
-            [...Array(formatoDe(borrador).periodos).keys()]
+            [...Array(periodosDe(borrador)).keys()]
               .map((i) => i + 1)
               .map(
                 (c) =>
                   `<button type="button" data-c="${c}" aria-pressed="${g.cuarto === c}">` +
-                  `${formatoDe(borrador).como(c)}</button>`
+                  `${estructuraDe(borrador).como(c)}</button>`
               )
               .join('') +
             `</div></div>`
@@ -2713,17 +2823,26 @@
     }
 
     /*
-      Esta escucha va UNA vez, fuera de redibujar.
+      Las escuchas de acá abajo van UNA vez por hoja, y esto lo obliga.
 
-      Estaba dentro, y `#cuando-d` no se reemplaza —solo cambia su contenido—,
-      así que cada redibujado le sumaba otra. En el camino normal quedaban dos:
-      subir el contador de goles y tocar la D. Con dos escuchas, tocar un cuarto
-      ejecutaba el interruptor dos veces —lo ponía y lo quitaba— y la ficha no
-      hacía nada, sin ningún error.
+      La primera version lo decia en un comentario y no lo obligaba: las puse
+      fuera de `redibujar` y quedo bien... hasta que `cablearD` paso a llamarse
+      tambien al cambiar la estructura. Cada cambio sumaba otra escucha, y con
+      dos, tocar un periodo ejecutaba el interruptor dos veces —lo ponia y lo
+      quitaba— y la ficha no hacia nada, sin ningun error.
 
-      El de la D no tenía el problema porque ese SVG sí se vuelve a crear en cada
-      redibujado, y con él su escucha.
+      `#campo-d` se vuelve a crear con cada hoja, asi que la marca se limpia
+      sola: una hoja nueva vuelve a cablear, una hoja abierta no.
+
+      El de la D no tiene el problema porque ese SVG si se vuelve a crear en
+      cada redibujado, y con el su escucha.
     */
+    if (campo.dataset.cableado) {
+      redibujar()
+      return
+    }
+    campo.dataset.cableado = '1'
+
     document.getElementById('cuando-d').addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
@@ -3567,19 +3686,26 @@
 
   /* Medidas reales de la cancha, en metros. */
   /*
-    Dos formatos, dos maneras de partir el partido.
+    Tres datos que no van atados, aunque lo parezcan.
 
-    El de 11 son cuatro cuartos de quince; el de 7, dos tiempos. Preguntar «¿que
-    cuarto?» en un partido de 7 no tiene respuesta, y guardar un «3º» ahi seria
-    un dato inventado. Por eso el formato se pregunta antes, y las fichas de
-    periodo salen de el.
+    Primero los ate: «de 11 son cuatro cuartos, de 7 son dos tiempos». Es falso.
+    Rodrigo jugo una liga de 11 en dos tiempos de veinte. El formato dice cuantos
+    juegan; como se parte el partido y cuanto dura los decide el torneo, y cambian
+    de una competencia a otra.
+
+    Asi que son tres preguntas. Para que eso no cueste tres toques cada vez, se
+    recuerdan por torneo: la primera vez que anotas un partido de la Copa se
+    preguntan, y el resto de la Copa ya vienen puestos.
   */
-  const FORMATOS = {
-    11: { periodos: 4, como: (n) => `${n}º`, dice: '4 cuartos' },
-    7: { periodos: 2, como: (n) => `${n}º t.`, dice: '2 tiempos' }
+  const FORMATOS = { 11: 'De 11', 7: 'De 7' }
+
+  const ESTRUCTURAS = {
+    2: { nombre: '2 tiempos', como: (n) => `${n}º t.` },
+    4: { nombre: '4 cuartos', como: (n) => `${n}º` }
   }
 
-  const formatoDe = (x) => FORMATOS[x?.formato] ?? FORMATOS[11]
+  const periodosDe = (x) => (x?.periodos === 2 ? 2 : 4)
+  const estructuraDe = (x) => ESTRUCTURAS[periodosDe(x)]
 
   /*
     Cuanto dura el partido.
@@ -3592,10 +3718,27 @@
     partido de 7 de doce minutos eso guardaba un numero cinco veces mas grande
     que el real, y lo sumaba al total con toda la cara.
   */
-  const DURACION_11 = 60
-  const DURACIONES_7 = [12, 20]
+  const DURACIONES = [12, 20, 25, 30, 40, 60]
 
-  const duracionDe = (x) => (x.formato === 7 ? (x.duracion ?? null) : DURACION_11)
+  /* Solo se sabe si esta anotada. Nada se deduce del formato. */
+  const duracionDe = (x) => (typeof x.duracion === 'number' ? x.duracion : null)
+
+  /*
+    Como se jugo la ultima vez ese torneo, para no preguntarlo dos veces.
+
+    Se busca por nombre de torneo y formato: la Copa de 7 y la Copa de 11 son
+    competencias distintas aunque se llamen igual.
+  */
+  function comoSeJuega(torneo, formato) {
+    const clave = claveRival(torneo ?? '')
+    const previo = todosLosPartidos()
+      .filter((x) => claveRival(x.torneo ?? '') === clave && x.formato === formato)
+      .filter((x) => typeof x.duracion === 'number')
+      .pop()
+    return previo
+      ? { periodos: periodosDe(previo), duracion: previo.duracion }
+      : { periodos: formato === 7 ? 2 : 4, duracion: null }
+  }
 
   /* Las fichas son proporciones; los minutos salen de multiplicar. */
   const PARTES = [
@@ -3679,10 +3822,10 @@
   */
   function pintarCuartos() {
     const caja = document.getElementById('reparto-cuartos')
-    const trozos = Object.keys(FORMATOS)
-      .map(Number)
-      .map((f) => unReparto(f))
-      .filter(Boolean)
+    // Se agrupa por como se partio el partido, no por cuantos jugaban: un
+    // tercer cuarto y un segundo tiempo no son la misma casilla, y en cambio dos
+    // partidos de dos tiempos si lo son aunque uno sea de 11 y otro de 7.
+    const trozos = [2, 4].map((n) => unReparto(n)).filter(Boolean)
 
     caja.innerHTML = trozos.length
       ? `<p class="rotulo" style="margin:1rem 0 0">Cuándo marcas</p>` + trozos.join('')
@@ -3690,14 +3833,14 @@
         'verás cuándo apareces.</p>'
   }
 
-  function unReparto(formato) {
+  function unReparto(periodos) {
     const goles = todosLosPartidos()
-      .filter((x) => (x.formato ?? 11) === formato)
+      .filter((x) => periodosDe(x) === periodos)
       .flatMap((x) => x.posiciones ?? [])
       .filter((g) => g.cuarto)
     if (goles.length === 0) return null
 
-    const { periodos, como } = FORMATOS[formato]
+    const { nombre, como } = ESTRUCTURAS[periodos]
     const cuenta = [...Array(periodos).keys()].map(
       (i) => goles.filter((g) => g.cuarto === i + 1).length
     )
@@ -3706,7 +3849,7 @@
     const rejilla = `grid-template-columns:repeat(${periodos},1fr)`
 
     return (
-      `<p class="detalle" style="margin:0.7rem 0 0">De ${formato} · ${FORMATOS[formato].dice}</p>` +
+      `<p class="detalle" style="margin:0.7rem 0 0">${nombre}</p>` +
       `<div class="cuartos" style="${rejilla}">` +
       cuenta
         .map(
