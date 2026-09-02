@@ -1768,12 +1768,13 @@
         // gráfico que afirma algo que nunca mediste.
         dias: (Array.isArray(d.dias) ? d.dias : []).map((dia) => ({
           ...dia,
-          partidos: (dia.partidos ?? []).map((x) => ({
+          partidos: (dia.partidos ?? []).map((x) => aDatoLimpio({
             asistencias: null,
             minutos: null,
             posiciones: [],
             // null = no hubo penales. No es lo mismo que haberlos perdido.
             penales: null,
+            duracion: null,
             // Los partidos guardados antes de que existiera el formato se leen
             // como de 11. No es un adivinar: cuando se anotaron, las fichas de
             // periodo solo ofrecian cuatro cuartos, asi que eso es lo que
@@ -1812,6 +1813,21 @@
     } catch {
       return { ...ESTADO_VACIO }
     }
+  }
+
+  /*
+    Un partido de 7 sin duracion no puede afirmar sus minutos.
+
+    Los guardados antes de que existiera este campo llevan 60, 45, 30 o 15
+    porque la app se los puso, no porque el los midiera. Ese numero se descarta:
+    dejarlo seria seguir afirmando algo que salio de una premisa falsa. Los de 11
+    no se tocan, porque ahi sesenta si es el largo real.
+  */
+  function aDatoLimpio(x) {
+    if (x.formato === 7 && typeof x.duracion !== 'number' && typeof x.minutos === 'number') {
+      return { ...x, minutos: null }
+    }
+    return x
   }
 
   function guardar() {
@@ -2086,6 +2102,7 @@
     borrador = {
       asistencias: 0,
       minutos: null,
+      duracion: null,
       formato: 11,
       penales: null,
       fecha: hoy(),
@@ -2190,18 +2207,36 @@
         ${contador('asistencias', borrador.asistencias ?? 0)}
       </div>
 
+      <div class="campo" id="campo-duracion" ${borrador.formato === 7 ? '' : 'hidden'}>
+        <label class="rotulo">Cuánto duró <span style="text-transform:none;font-weight:400">(los de 7 varían)</span></label>
+        <div class="fichas" id="duracion">
+          ${DURACIONES_7.map(
+            (d) =>
+              `<button type="button" data-dur="${d}" aria-pressed="${
+                borrador.duracion === d
+              }">${d} min</button>`
+          ).join('')}
+          <button type="button" data-dur="otra" aria-pressed="${
+            borrador.duracion && !DURACIONES_7.includes(borrador.duracion)
+          }">Otra</button>
+        </div>
+        <input id="duracion-otra" type="number" min="1" max="120" class="caja-texto"
+               style="margin-top:0.4rem;font:inherit" placeholder="Minutos"
+               value="${borrador.duracion && !DURACIONES_7.includes(borrador.duracion) ? borrador.duracion : ''}"
+               ${borrador.duracion && !DURACIONES_7.includes(borrador.duracion) ? '' : 'hidden'}>
+      </div>
+
       <div class="campo">
         <label class="rotulo">Cuánto jugaste <span style="text-transform:none;font-weight:400">(opcional)</span></label>
         <div class="fichas" id="minutos">
-          ${[['60', 'Todo'], ['45', 'Casi todo'], ['30', 'La mitad'], ['15', 'Un rato'], ['0', 'No jugué']]
-            .map(
-              ([min, texto]) =>
-                `<button type="button" data-min="${min}" aria-pressed="${
-                  borrador.minutos === Number(min)
-                }">${texto}</button>`
-            )
-            .join('')}
+          ${PARTES.map(
+            ([parte, texto]) =>
+              `<button type="button" data-parte="${parte}" aria-pressed="${
+                proporcionDe(borrador) === parte
+              }">${texto}</button>`
+          ).join('')}
         </div>
+        <p class="detalle" id="pie-minutos" style="margin-top:0.4rem"></p>
       </div>
 
       <div class="campo">
@@ -2239,6 +2274,13 @@
       ${borrador.editando ? '<button class="boton" data-tipo="callado" id="borrar-partido" type="button" style="color:var(--rojo)">Borrar este partido</button><div id="confirmar-borrado"></div>' : ''}
     `
     cablearHoja()
+  }
+
+  /* De los minutos guardados, cual ficha estaba puesta. */
+  function proporcionDe(x) {
+    const dur = duracionDe(x)
+    if (typeof x.minutos !== 'number' || !dur) return null
+    return PARTES.map(([p]) => p).find((p) => Math.round(p * dur) === x.minutos) ?? null
   }
 
   const contador = (campo, valor) => `
@@ -2359,20 +2401,75 @@
       for (const g of borrador.posiciones ?? []) {
         if (g.cuarto > periodos) delete g.cuarto
       }
+      // Y la duración: la de 11 es fija, la de 7 hay que preguntarla.
+      const cajaDur = document.getElementById('campo-duracion')
+      if (cajaDur) cajaDur.hidden = borrador.formato !== 7
+      if (borrador.formato !== 7) borrador.duracion = null
       cablearD()
     })
 
+    const pintarMinutos = () => {
+      const dur = duracionDe(borrador)
+      const puesta = proporcionDe(borrador)
+      document.querySelectorAll('#minutos button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.parte) === puesta))
+        // Sin duracion no hay minutos que calcular: las fichas se apagan en vez
+        // de guardar un numero sacado de la nada.
+        x.disabled = !dur
+      })
+      const pie = document.getElementById('pie-minutos')
+      if (pie) {
+        pie.textContent = !dur
+          ? 'Dime primero cuánto duró y esto se activa.'
+          : typeof borrador.minutos === 'number'
+            ? `${borrador.minutos} de ${dur} minutos.`
+            : ''
+      }
+    }
+
     document.getElementById('minutos')?.addEventListener('click', (e) => {
       const b = e.target.closest('button')
-      if (!b) return
-      const v = b.dataset.min === 'null' ? null : Number(b.dataset.min)
+      if (!b || b.disabled) return
+      const dur = duracionDe(borrador)
+      const parte = Number(b.dataset.parte)
+      const valor = Math.round(parte * dur)
       // Volver a tocar la misma la apaga y los minutos vuelven a «no se sabe».
-      borrador.minutos = borrador.minutos === v ? null : v
-      document.querySelectorAll('#minutos button').forEach((x) => {
-        const suyo = x.dataset.min === 'null' ? null : Number(x.dataset.min)
-        x.setAttribute('aria-pressed', String(suyo === borrador.minutos))
-      })
+      borrador.minutos = borrador.minutos === valor ? null : valor
+      pintarMinutos()
     })
+
+    document.getElementById('duracion')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      const otra = document.getElementById('duracion-otra')
+      if (b.dataset.dur === 'otra') {
+        otra.hidden = false
+        otra.focus()
+      } else {
+        const d = Number(b.dataset.dur)
+        borrador.duracion = borrador.duracion === d ? null : d
+        otra.hidden = true
+      }
+      document.querySelectorAll('#duracion button').forEach((x) => {
+        x.setAttribute(
+          'aria-pressed',
+          String(x.dataset.dur === 'otra' ? !otra.hidden : Number(x.dataset.dur) === borrador.duracion)
+        )
+      })
+      // Cambiar la duracion cambia a cuantos minutos equivale la ficha puesta.
+      const parte = proporcionDe(borrador)
+      borrador.minutos =
+        parte !== null && duracionDe(borrador) ? Math.round(parte * duracionDe(borrador)) : null
+      pintarMinutos()
+    })
+
+    document.getElementById('duracion-otra')?.addEventListener('input', (e) => {
+      const n = Number(e.target.value)
+      borrador.duracion = n > 0 && n <= 120 ? n : null
+      pintarMinutos()
+    })
+
+    pintarMinutos()
   }
 
   function guardarPartido() {
@@ -2411,6 +2508,7 @@
       suyos: borrador.suyos,
       goles: borrador.goles,
       formato: borrador.formato ?? 11,
+      duracion: borrador.formato === 7 ? (borrador.duracion ?? null) : null,
       // Solo tiene sentido con el marcador empatado: guardarlo en un 3-1 sería
       // un dato que contradice al otro.
       penales: borrador.nuestros === borrador.suyos ? (borrador.penales ?? null) : null,
@@ -3482,6 +3580,31 @@
   }
 
   const formatoDe = (x) => FORMATOS[x?.formato] ?? FORMATOS[11]
+
+  /*
+    Cuanto dura el partido.
+
+    El de 11 son siempre cuatro cuartos de quince: sesenta, y no hay nada que
+    preguntar. El de 7 dura lo que diga el torneo — a veces veinte minutos, a
+    veces doce — asi que la app no puede saberlo y no debe inventarlo.
+
+    Antes las fichas guardaban 60, 45, 30, 15 fijos en ambos formatos. Para un
+    partido de 7 de doce minutos eso guardaba un numero cinco veces mas grande
+    que el real, y lo sumaba al total con toda la cara.
+  */
+  const DURACION_11 = 60
+  const DURACIONES_7 = [12, 20]
+
+  const duracionDe = (x) => (x.formato === 7 ? (x.duracion ?? null) : DURACION_11)
+
+  /* Las fichas son proporciones; los minutos salen de multiplicar. */
+  const PARTES = [
+    [1, 'Todo'],
+    [0.75, 'Casi todo'],
+    [0.5, 'La mitad'],
+    [0.25, 'Un rato'],
+    [0, 'No jugué']
+  ]
 
   const R_D = 14.63
   const MEDIO_ARCO = 1.83
