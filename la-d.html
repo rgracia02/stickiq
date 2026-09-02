@@ -381,6 +381,17 @@
   .partido .marcador[data-r="p"] { color: var(--rojo); }
   .partido .marcador[data-r="e"] { color: var(--tinta-suave); }
 
+  /* Los de 7 llevan marca; los de 11 no, porque son la mayoria y marcarlos
+     todos seria ruido. La ausencia de marca ya dice «de 11». */
+  .formato-7 {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    vertical-align: super;
+    margin-left: 0.15rem;
+    color: var(--tinta-suave);
+  }
+
   .goles-mios {
     font-family: "Barlow Condensed", Barlow, sans-serif;
     font-weight: 600;
@@ -1611,6 +1622,11 @@
             asistencias: null,
             minutos: null,
             posiciones: [],
+            // Los partidos guardados antes de que existiera el formato se leen
+            // como de 11. No es un adivinar: cuando se anotaron, las fichas de
+            // periodo solo ofrecian cuatro cuartos, asi que eso es lo que
+            // significaban. Si alguno era de 7, se corrige editandolo.
+            formato: 11,
             ...x
           }))
         })),
@@ -1847,7 +1863,9 @@
               ` data-dia="${dia.fecha}|${escapar(dia.torneo)}" data-i="${i}"` +
               ` aria-label="Editar ${escapar(p.rival)}">` +
               `<span class="rival">${escapar(p.rival)}</span>` +
-              `<span class="marcador" data-r="${resultado(p)}">${p.nuestros}–${p.suyos}</span>` +
+              `<span class="marcador" data-r="${resultado(p)}">${p.nuestros}–${p.suyos}` +
+              ((p.formato ?? 11) === 7 ? `<span class="formato-7">7</span>` : '') +
+              `</span>` +
               `<span class="goles-mios" data-cero="${p.goles === 0 ? 'si' : 'no'}">` +
               `${p.goles} ${p.goles === 1 ? 'gol' : 'goles'}</span>` +
               `</button>`
@@ -1877,6 +1895,7 @@
     borrador = {
       asistencias: 0,
       minutos: null,
+      formato: 11,
       fecha: hoy(),
       // El torneo se hereda del último día: en una fecha juegas tres partidos
       // seguidos y volver a escribir «Liga» cada vez es trabajo inventado.
@@ -1917,6 +1936,19 @@
         <div class="campo">
           <span class="mini-rotulo">Ellos</span>
           ${contador('suyos', borrador.suyos)}
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Formato</label>
+        <div class="fichas" id="formato">
+          ${[11, 7]
+            .map(
+              (f) =>
+                `<button type="button" data-f="${f}" aria-pressed="${borrador.formato === f}">` +
+                `De ${f} · ${FORMATOS[f].dice}</button>`
+            )
+            .join('')}
         </div>
       </div>
 
@@ -2034,6 +2066,23 @@
   }
 
   function cablearFichas() {
+    document.getElementById('formato')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      borrador.formato = Number(b.dataset.f)
+      document.querySelectorAll('#formato button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.f) === borrador.formato))
+      })
+      // Cambiar de formato tira los periodos ya puestos: un «4º cuarto» no
+      // existe en un partido de dos tiempos, y dejarlo guardado seria peor que
+      // pedirlo de nuevo.
+      const periodos = formatoDe(borrador).periodos
+      for (const g of borrador.posiciones ?? []) {
+        if (g.cuarto > periodos) delete g.cuarto
+      }
+      cablearD()
+    })
+
     document.getElementById('minutos')?.addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
@@ -2082,6 +2131,7 @@
       nuestros: borrador.nuestros,
       suyos: borrador.suyos,
       goles: borrador.goles,
+      formato: borrador.formato ?? 11,
       posiciones: borrador.posiciones ?? [],
       asistencias: borrador.asistencias ?? 0,
       // null y no cero: si no tocó las fichas, no se sabe cuánto jugó, y eso no
@@ -2238,10 +2288,12 @@
           (g, k) =>
             `<div class="gol-fila"><span>Gol ${k + 1}</span>` +
             `<div class="fichas" data-gol="${k}">` +
-            [1, 2, 3, 4]
+            [...Array(formatoDe(borrador).periodos).keys()]
+              .map((i) => i + 1)
               .map(
                 (c) =>
-                  `<button type="button" data-c="${c}" aria-pressed="${g.cuarto === c}">${c}º</button>`
+                  `<button type="button" data-c="${c}" aria-pressed="${g.cuarto === c}">` +
+                  `${formatoDe(borrador).como(c)}</button>`
               )
               .join('') +
             `</div></div>`
@@ -3008,6 +3060,21 @@
   // ---------- la D ----------
 
   /* Medidas reales de la cancha, en metros. */
+  /*
+    Dos formatos, dos maneras de partir el partido.
+
+    El de 11 son cuatro cuartos de quince; el de 7, dos tiempos. Preguntar «¿que
+    cuarto?» en un partido de 7 no tiene respuesta, y guardar un «3º» ahi seria
+    un dato inventado. Por eso el formato se pregunta antes, y las fichas de
+    periodo salen de el.
+  */
+  const FORMATOS = {
+    11: { periodos: 4, como: (n) => `${n}º`, dice: '4 cuartos' },
+    7: { periodos: 2, como: (n) => `${n}º t.`, dice: '2 tiempos' }
+  }
+
+  const formatoDe = (x) => FORMATOS[x?.formato] ?? FORMATOS[11]
+
   const R_D = 14.63
   const MEDIO_ARCO = 1.83
 
@@ -3071,33 +3138,57 @@
   const todosLosGolesDetallados = () =>
     todosLosPartidos().flatMap((x) => x.posiciones ?? [])
 
+  /*
+    Un reparto por formato, nunca uno solo con todo dentro.
+
+    Un «3er cuarto» y un «2do tiempo» no son la misma casilla, y sumarlos en una
+    barra daria un numero que no significa nada. Es la misma regla que separa el
+    entrenamiento del partido: dos cosas distintas no se suman por caber en el
+    mismo grafico.
+  */
   function pintarCuartos() {
-    const conCuarto = todosLosGolesDetallados().filter((g) => g.cuarto)
     const caja = document.getElementById('reparto-cuartos')
-    if (conCuarto.length === 0) {
-      caja.innerHTML =
-        '<p class="detalle" style="margin-top:0.6rem">Marca el cuarto de tus goles y acá ' +
+    const trozos = Object.keys(FORMATOS)
+      .map(Number)
+      .map((f) => unReparto(f))
+      .filter(Boolean)
+
+    caja.innerHTML = trozos.length
+      ? `<p class="rotulo" style="margin:1rem 0 0">Cuándo marcas</p>` + trozos.join('')
+      : '<p class="detalle" style="margin-top:0.6rem">Marca el período de tus goles y acá ' +
         'verás cuándo apareces.</p>'
-      return
-    }
-    const cuenta = [1, 2, 3, 4].map((c) => conCuarto.filter((g) => g.cuarto === c).length)
+  }
+
+  function unReparto(formato) {
+    const goles = todosLosPartidos()
+      .filter((x) => (x.formato ?? 11) === formato)
+      .flatMap((x) => x.posiciones ?? [])
+      .filter((g) => g.cuarto)
+    if (goles.length === 0) return null
+
+    const { periodos, como } = FORMATOS[formato]
+    const cuenta = [...Array(periodos).keys()].map(
+      (i) => goles.filter((g) => g.cuarto === i + 1).length
+    )
     const tope = Math.max(...cuenta)
     const mejor = cuenta.indexOf(tope) + 1
+    const rejilla = `grid-template-columns:repeat(${periodos},1fr)`
 
-    caja.innerHTML =
-      `<p class="rotulo" style="margin:1rem 0 0">Cuándo marcas</p>` +
-      `<div class="cuartos">` +
+    return (
+      `<p class="detalle" style="margin:0.7rem 0 0">De ${formato} · ${FORMATOS[formato].dice}</p>` +
+      `<div class="cuartos" style="${rejilla}">` +
       cuenta
         .map(
           (n) =>
             `<div><b>${n}</b><i style="height:${n === 0 ? 3 : Math.round((n / tope) * 44)}px"></i></div>`
         )
         .join('') +
-      `</div><div class="pies-cuartos">` +
-      [1, 2, 3, 4].map((c) => `<span>${c}º</span>`).join('') +
+      `</div><div class="pies-cuartos" style="${rejilla}">` +
+      cuenta.map((_, i) => `<span>${como(i + 1)}</span>`).join('') +
       `</div>` +
-      `<p class="detalle" style="margin-top:0.5rem">Tu cuarto es el <b>${mejor}º</b>, ` +
-      `con ${tope} de ${conCuarto.length} ${conCuarto.length === 1 ? 'gol' : 'goles'}.</p>`
+      `<p class="detalle" style="margin-top:0.4rem">Sobre todo el <b>${como(mejor)}</b>, ` +
+      `con ${tope} de ${goles.length} ${goles.length === 1 ? 'gol' : 'goles'}.</p>`
+    )
   }
 
   function pintarMapaD() {
