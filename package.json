@@ -1,9 +1,9 @@
 {
-  "name": "la-d",
+  "name": "stickiq",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Registro de temporada de hockey césped",
+  "description": "StickIQ — registro de temporada de hockey césped",
   "scripts": {
     "test": "node pruebas/correr.mjs",
     "revisar": "node scripts/revisar.mjs"

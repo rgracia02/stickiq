@@ -1,4 +1,4 @@
-<title>La D</title>
+<title>StickIQ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
@@ -1404,7 +1404,7 @@
 <div class="hoja">
   <header class="cabecera">
     <div>
-      <h1>La D</h1>
+      <h1>StickIQ</h1>
       <p>Tu temporada de césped</p>
     </div>
     <button class="boton" data-tipo="callado" id="btn-datos" type="button">Datos</button>
@@ -1418,12 +1418,28 @@
 
     <section class="cancha">
       <svg class="lineas" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <!-- La D y la línea de 23: las dos marcas que cualquiera que juegue
-             reconoce sin que se las expliquen. -->
-        <line x1="0" y1="52" x2="400" y2="52" stroke="#fff" stroke-width="2" />
-        <path d="M 40 -40 A 160 160 0 0 0 360 -40" fill="none" stroke="#fff" stroke-width="2" />
-        <path d="M 92 -40 A 108 108 0 0 0 308 -40" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="7 9" />
-        <line x1="200" y1="52" x2="200" y2="260" stroke="#fff" stroke-width="1.5" opacity="0.5" />
+        <!--
+          Un palo, y no líneas de cancha.
+
+          Antes había tres arcos sueltos que pretendían ser la D y la línea de
+          23. Recortados por el borde de la tarjeta no se leían como una cancha:
+          se leían como curvas al azar. El palo es el objeto más reconocible del
+          deporte y no necesita contexto para entenderse.
+
+          Apunta hacia la izquierda a propósito: ahí está el botón de la pelota.
+          El dibujo y el control se leen juntos como un gesto de golpear.
+        -->
+        <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+          <!-- El mango. -->
+          <path d="M 366 4 L 292 152" stroke-width="13" opacity="0.85" />
+          <!-- El gancho de la cabeza, que en césped curva hacia el lado plano. -->
+          <path d="M 292 152 C 280 178 254 192 236 180 C 222 170 226 152 242 150"
+                stroke-width="13" opacity="0.85" />
+          <!-- La empuñadura, un poco más marcada. -->
+          <path d="M 366 4 L 344 48" stroke-width="15" opacity="0.5" />
+          <!-- Y la línea de fondo, para que el palo se apoye en algo. -->
+          <line x1="0" y1="214" x2="400" y2="214" stroke-width="2" opacity="0.45" />
+        </g>
       </svg>
 
       <div class="fila-hoy">
@@ -3481,7 +3497,7 @@
             : ''
         }
 
-        <p class="firma">La D · hockey césped</p>
+        <p class="firma">StickIQ · hockey césped</p>
         <button class="boton" id="cerrar-lamina" type="button"
                 style="width:100%;margin-top:1rem;background:var(--pelota);border-color:var(--pelota);color:#3a2c00">
           Cerrar

@@ -1,14 +1,14 @@
-# La D
+# StickIQ
 
 Registro de temporada de hockey césped. Una sola página web, pensada para el
-celular, que se publica como artefacto de Claude.
+celular, que se publica como artefacto de Claude. Antes se llamaba La D.
 
 **Publicada en:** `https://claude.ai/code/artifact/e892aeef-d43a-46f3-b540-d92d99157827`
 
 ## Correr las pruebas
 
 ```bash
-npm test              revisión estructural + las 130 comprobaciones
+npm test              revisión estructural + las 187 comprobaciones
 npm test logros       solo las que coincidan
 npm run revisar       solo la revisión estructural
 node pruebas/d.mjs    una sola, con todo su detalle
