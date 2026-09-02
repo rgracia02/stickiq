@@ -255,7 +255,10 @@
   .deshacer {
     background: none;
     border: none;
-    padding: 0.35rem 0;
+    /* «Deshacer» y «Agregar goles» median 26 px de alto sobre la cancha. */
+    display: inline-block;
+    min-height: 44px;
+    padding: 0.7rem 0;
     margin-top: 0.2rem;
     color: rgb(255 255 255 / 0.76);
     font: inherit;
@@ -409,6 +412,20 @@
 
   /* Los de 7 llevan marca; los de 11 no, porque son la mayoria y marcarlos
      todos seria ruido. La ausencia de marca ya dice «de 11». */
+  /* Los penales llevan su propia marca: antes compartia clase con la del
+     formato, asi que un «2–2ᵖ» y un «3–1⁷» se leian como la misma clase de
+     anotacion en la fila mas densa de la app. */
+  .marca-penales {
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 0.2rem;
+    padding: 0 0.25rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--tinta) 12%, transparent);
+    color: var(--tinta-suave);
+    vertical-align: 1px;
+  }
+
   .formato-7 {
     font-size: 0.62rem;
     font-weight: 600;
@@ -603,9 +620,11 @@
     /* 0,6 daba 3,7:1 sobre el azul de la cancha y esto es texto. */
     color: rgb(255 255 255 / 0.78);
     font: inherit;
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     cursor: pointer;
-    padding: 0.3rem;
+    /* Media 100 x 28: por debajo de lo que un pulgar acierta a la primera. */
+    min-height: 44px;
+    padding: 0.3rem 0.5rem;
   }
   .proximo button:hover { color: var(--linea); }
 
@@ -617,7 +636,16 @@
     gap: 0.7rem 0.5rem;
   }
 
-  .logro { text-align: center; }
+  .logro {
+    text-align: center;
+    /* Un boton trae su propio fondo, borde y tipografia: hay que decirlo todo. */
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
 
   .escudo {
     width: 100%;
@@ -1280,6 +1308,9 @@
     font-size: 0.95rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    /* 44 px es el minimo con el que un dedo acierta. Estos botones median 39, y
+       entre ellos estan «Guardar» y «Cancelar» al pie de cada hoja. */
+    min-height: 44px;
     padding: 0.6rem 0.95rem;
     border-radius: 10px;
     border: 1px solid var(--borde);
@@ -1301,7 +1332,7 @@
     border: none;
     background: none;
     color: var(--tinta-suave);
-    padding: 0.5rem 0.2rem;
+    padding: 0.5rem 0.6rem;
   }
   .boton[data-tipo="callado"]:hover { color: var(--tinta); }
 
@@ -1552,6 +1583,7 @@
           <button class="deshacer" id="btn-detalle-entreno" type="button" hidden
                   style="margin-left:0.9rem">Agregar goles</button>
           <p class="detalle-hoy" id="detalle-entreno" hidden></p>
+          <button class="deshacer" id="btn-partido-hoy" type="button">+ Anotar un partido</button>
         </div>
       </div>
 
@@ -1647,6 +1679,7 @@
         <span class="cuenta-logros" id="cuenta-logros"></span>
       </div>
       <div class="logros" id="logros"></div>
+      <p class="detalle" id="detalle-logro">Toca uno para ver qué pide.</p>
     </section>
 
     <section class="tarjeta">
@@ -2021,7 +2054,7 @@
               ` aria-label="Editar ${escapar(p.rival)}">` +
               `<span class="rival">${escapar(p.rival)}</span>` +
               `<span class="marcador" data-r="${resultado(p)}">${p.nuestros}–${p.suyos}` +
-              (seFueAPenales(p) ? `<span class="formato-7">p</span>` : '') +
+              (seFueAPenales(p) ? `<span class="marca-penales">p</span>` : '') +
               ((p.formato ?? 11) === 7 ? `<span class="formato-7">7</span>` : '') +
               `</span>` +
               `<span class="goles-mios" data-cero="${p.goles === 0 ? 'si' : 'no'}">` +
@@ -2203,7 +2236,7 @@
         <button class="boton" id="cancelar" type="button">Cancelar</button>
         <button class="boton" data-tipo="fuerte" id="guardar-partido" type="button">Guardar</button>
       </div>
-      ${borrador.editando ? '<button class="boton" data-tipo="callado" id="borrar-partido" type="button" style="color:var(--rojo)">Borrar este partido</button>' : ''}
+      ${borrador.editando ? '<button class="boton" data-tipo="callado" id="borrar-partido" type="button" style="color:var(--rojo)">Borrar este partido</button><div id="confirmar-borrado"></div>' : ''}
     `
     cablearHoja()
   }
@@ -2235,7 +2268,33 @@
     cablearFichas()
     document.getElementById('cancelar').addEventListener('click', cerrarHoja)
     document.getElementById('guardar-partido').addEventListener('click', guardarPartido)
-    document.getElementById('borrar-partido')?.addEventListener('click', borrarPartido)
+    /*
+      Borrar un partido se pregunta; restaurar una copia se preguntaba.
+
+      Estaba al reves. Restaurar es recuperable —la copia sigue en tu WhatsApp— y
+      tenia dos pasos. Borrar un partido se lleva el rival, el marcador, los
+      goles, sus sitios en la D y sus cuartos, no hay deshacer, y se ejecutaba al
+      primer toque. La guardia estaba en la accion equivocada.
+    */
+    document.getElementById('borrar-partido')?.addEventListener('click', () => {
+      const caja = document.getElementById('confirmar-borrado')
+      const p = borrador
+      const cuenta = [
+        `${p.nuestros}–${p.suyos} contra ${escapar(p.rival)}`,
+        p.goles ? `${p.goles} ${p.goles === 1 ? 'gol tuyo' : 'goles tuyos'}` : null,
+        (p.posiciones ?? []).some((g) => typeof g.x === 'number') ? 'su sitio en la D' : null
+      ].filter(Boolean)
+      caja.innerHTML =
+        `<div class="aviso" style="margin-top:0.6rem">` +
+        `<p style="margin:0 0 0.6rem">Se va <b>${cuenta.join(' · ')}</b>. No se puede deshacer.</p>` +
+        `<div class="acciones">` +
+        `<button class="boton" id="no-borrar" type="button">No</button>` +
+        `<button class="boton" id="si-borrar" type="button"` +
+        ` style="background:var(--rojo);border-color:var(--rojo);color:#fff">Borrar</button>` +
+        `</div></div>`
+      document.getElementById('si-borrar').addEventListener('click', borrarPartido)
+      document.getElementById('no-borrar').addEventListener('click', () => (caja.innerHTML = ''))
+    })
   }
 
   function cablearContadores() {
@@ -2637,17 +2696,19 @@
       try {
         await navigator.clipboard.writeText(copia)
         e.target.textContent = 'Copiado — ahora pégala donde la guardes'
+        // La fecha se anota SOLO si de verdad se copio. Antes se anotaba
+        // tambien en el catch, asi que la app podia decir «ultima copia: hoy»
+        // de una copia que nunca salio del recuadro.
+        estado.copiado = new Date().toISOString()
+        estado.avisoVisto = null
+        guardar()
+        pintarAvisoCopia()
       } catch {
-        // Si el portapapeles no está disponible, seleccionar el texto deja el
-        // trabajo a un toque en vez de dejarlo en nada.
+        // Sin portapapeles, seleccionar el texto deja el trabajo a un toque. Pero
+        // eso no es una copia hecha, y no se anota como tal.
         area.select()
         e.target.textContent = 'Selecciónala y cópiala a mano'
       }
-      // La fecha se anota igual: lo que cuenta es que la sacaste.
-      estado.copiado = new Date().toISOString()
-      estado.avisoVisto = null
-      guardar()
-      pintarAvisoCopia()
     })
 
     document.getElementById('revisar-pegado').addEventListener('click', () => {
@@ -2667,7 +2728,15 @@
       document.getElementById('confirmar-restaurar').addEventListener('click', () => {
         try {
           localStorage.setItem(CLAVE, JSON.stringify(r.datos))
-        } catch {}
+        } catch {
+          // Antes esto se tragaba el error y volvia a leer, asi que repintaba
+          // los datos VIEJOS y parecia que habia funcionado. Una restauracion
+          // que falla en silencio es la peor forma de perder una temporada.
+          dice.innerHTML =
+            `<b style="color:var(--rojo)">No se pudo guardar. Tus datos de acá siguen intactos ` +
+            `y la copia sigue en el recuadro.</b>`
+          return
+        }
         estado = leer()
         cerrarHoja()
         pintar()
@@ -2809,13 +2878,15 @@
       const e = d.entreno
       const extra = [
         e.goles ? `${e.goles} gol${e.goles === 1 ? '' : 'es'}` : null,
-        e.asistencias ? `${e.asistencias} asist.` : null
+        e.asistencias ? `${e.asistencias} asist.` : null,
+        e.sensacion ? `${e.sensacion}/5` : null
       ].filter(Boolean)
       partes.push('entrenamiento' + (extra.length ? ` (${extra.join(', ')})` : ''))
     }
     for (const x of d.partidos ?? []) {
       const mios = x.goles ? ` (${x.goles} tuyo${x.goles === 1 ? '' : 's'})` : ''
-      partes.push(`${escapar(x.rival)} ${x.nuestros}–${x.suyos}${mios}`)
+      const como = x.sensacion ? `, ${x.sensacion}/5` : ''
+      partes.push(`${escapar(x.rival)} ${x.nuestros}–${x.suyos}${mios}${como}`)
     }
     return `<b>${enPalabras(fecha)}</b> — ${partes.join(' · ')}`
   }
@@ -2960,13 +3031,26 @@
     document.getElementById('logros').innerHTML = LOGROS.map((l) => {
       const gano = Boolean(tengo[l.id])
       const secreto = l.oculto && !gano
+      // Un <button> y no un <div>: la pista vivia solo en `title`, y en un
+      // telefono no hay raton que se pose encima. Trece medallas con una regla
+      // que no habia forma de leer.
       return (
-        `<div class="logro" data-tengo="${gano ? 'si' : 'no'}"` +
-        ` title="${secreto ? 'Secreto' : escapar(l.pista)}">` +
+        `<button type="button" class="logro" data-tengo="${gano ? 'si' : 'no'}"` +
+        ` data-id="${l.id}">` +
         `<div class="escudo">${secreto ? '?' : l.marca}</div>` +
-        `<span class="nombre">${secreto ? 'Secreto' : escapar(l.nombre)}</span></div>`
+        `<span class="nombre">${secreto ? 'Secreto' : escapar(l.nombre)}</span></button>`
       )
     }).join('')
+  }
+
+  function contarLogro(id) {
+    const l = LOGROS.find((x) => x.id === id)
+    const cuando = estado.logros[id]
+    const secreto = l.oculto && !cuando
+    document.getElementById('detalle-logro').innerHTML = secreto
+      ? `<b>Secreto.</b> Se descubre consiguiéndolo.`
+      : `<b>${escapar(l.nombre)}</b> — ${escapar(l.pista)}` +
+        (cuando ? ` · lo conseguiste el ${enPalabras(cuando)}` : '')
   }
 
   // ---------- celebración ----------
@@ -3287,8 +3371,11 @@
       )
       .join('')
 
+    // «Goles» a secas ya existe en la pestaña de al lado y en azul. Dos leyendas
+    // idénticas con colores distintos, a un toque de distancia, se leen como un
+    // error del que mira y no del que dibuja.
     leyenda.innerHTML =
-      `<span><i style="background:var(--marca-entreno)"></i>Goles</span>` +
+      `<span><i style="background:var(--marca-entreno)"></i>Goles en entrenamiento</span>` +
       `<span><i style="background:var(--marca-asist)"></i>Asistencias</span>`
 
     const g = conAlgo.reduce((n, e) => n + (e.goles ?? 0), 0)
@@ -3769,7 +3856,20 @@
 
   function pintarAvisoCopia() {
     const caja = document.getElementById('aviso-copia')
-    const hayAlgo = estado.entrenamientos.length + estado.dias.length > 0
+    /*
+      No en el primer toque.
+
+      Antes bastaba con que existiera un dato: marcabas tu primer entrenamiento
+      de la vida y el premio era un aviso diciendo que nunca has sacado una
+      copia, empujando hacia abajo la pelota que acababas de tocar. Convertia el
+      mejor momento de la app en una advertencia.
+
+      Tres sesiones es cuando ya hay algo que doleria perder.
+      */
+    const sesiones =
+      estado.entrenamientos.length +
+      estado.dias.reduce((n, d) => n + d.partidos.length, 0)
+    const hayAlgo = sesiones >= 3
     const dias = diasDesde(estado.copiado)
 
     // Callado si no hay nada que perder, o si la copia es reciente, o si ya lo
@@ -3813,7 +3913,7 @@
     try {
       datos = JSON.parse(texto)
     } catch {
-      return { ok: false, porque: 'Eso no parece una copia de La D.' }
+      return { ok: false, porque: 'Eso no parece una copia de StickIQ.' }
     }
     if (!datos || typeof datos !== 'object' || !Array.isArray(datos.entrenamientos)) {
       return { ok: false, porque: 'Al texto le falta lo principal. ¿Lo copiaste entero?' }
@@ -3860,7 +3960,20 @@
 
   document.getElementById('btn-deshacer').addEventListener('click', alternarHoy)
   document.getElementById('btn-partido').addEventListener('click', abrirPartido)
+
+  /*
+    Y tambien desde Hoy. El dia de partido es el que produce los datos que mas
+    cuestan de recuperar, y hasta ahora la pantalla que abres ese dia ofrecia la
+    pelota del entrenamiento y nada mas: habia que saber que el boton vivia en
+    otra pestaña, debajo de un encabezado.
+  */
+  document.getElementById('btn-partido-hoy').addEventListener('click', abrirPartido)
   document.getElementById('btn-datos').addEventListener('click', abrirDatos)
+
+  document.getElementById('logros').addEventListener('click', (e) => {
+    const b = e.target.closest('.logro')
+    if (b) contarLogro(b.dataset.id)
+  })
 
   document.getElementById('barra-abajo').addEventListener('click', (e) => {
     const b = e.target.closest('button')
@@ -3949,12 +4062,16 @@
     }
 
     const x = todosLosPartidos().slice(-BARRAS_A_LA_VISTA)[i]
+    // La sensación se muestra acá porque hasta ahora no se mostraba en ningún
+    // sitio: se pedía un toque por partido y no devolvía nada. Un campo que solo
+    // escribe es trabajo cobrado sin nada a cambio.
     const trozos = [
       `${x.goles} ${x.goles === 1 ? 'gol' : 'goles'}`,
       typeof x.asistencias === 'number'
         ? `${x.asistencias} ${x.asistencias === 1 ? 'asistencia' : 'asistencias'}`
         : null,
-      typeof x.minutos === 'number' ? `${x.minutos} min` : null
+      typeof x.minutos === 'number' ? `${x.minutos} min` : null,
+      x.sensacion ? `te sentiste ${x.sensacion} de 5` : null
     ].filter(Boolean)
     pie.innerHTML =
       `<b>${escapar(x.rival)} ${x.nuestros}–${x.suyos}</b> · ${trozos.join(' · ')} · ${enPalabras(x.fecha)}`

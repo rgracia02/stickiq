@@ -71,7 +71,7 @@ const CLAVE = [
   'abrirDetalleEntreno', 'abrirDatos', 'abrirResumen', 'abrirProximo',
   'restaurarDesde', 'irA', 'celebrar', 'cablearHoja', 'cablearD',
   'alternarDia', 'mostrarDia', 'normalizarGoles', 'pintarCuartos', 'todosLosGolesDetallados',
-  'porRival', 'pintarRivales', 'unReparto', 'formatoDe', 'resultado', 'seFueAPenales', 'claveRival', 'rivalesConocidos', 'loQueViene'
+  'porRival', 'pintarRivales', 'unReparto', 'formatoDe', 'resultado', 'seFueAPenales', 'claveRival', 'rivalesConocidos', 'loQueViene', 'contarLogro'
 ]
 
 const perdidas = CLAVE.filter((f) => !new RegExp(`(function|const)\\s+${f}\\b`).test(js))
