@@ -1031,6 +1031,28 @@
 
 
 
+
+  /* ---------- el calendario ---------- */
+
+  .agenda { display: flex; flex-direction: column; }
+
+  .fila-agenda {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .fila-agenda:last-child { border-bottom: none; }
+  /* Lo que ya pasó se apaga, no se esconde: sigue estando para que lo quites tú. */
+  .fila-agenda[data-pasado="si"] { opacity: 0.5; }
+  .fila-agenda .cuando {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--tinta-suave);
+  }
+
   /* ---------- los rivales de siempre ---------- */
 
   /*
@@ -1646,7 +1668,7 @@
     entrenamientos: [],
     dias: [],
     logros: {},
-    proximo: null,
+    agenda: [],
     records: null,
     copiado: null,
     avisoVisto: null
@@ -1695,7 +1717,23 @@
         // Los campos nuevos se rellenan al leer, no al escribir: una app ya
         // instalada tiene datos sin ellos, y ahi es donde revienta.
         logros: d.logros && typeof d.logros === 'object' ? d.logros : {},
-        proximo: d.proximo ?? null,
+        /*
+          De un compromiso a una lista.
+
+          Antes solo cabia el proximo. Una temporada tiene fechas de liga, copas
+          y finales, y saber que despues del lunes vienen dos mas cambia como se
+          lee la cuenta regresiva.
+
+          El campo viejo se lee y entra a la lista: una copia guardada de antes
+          tiene que seguir funcionando.
+        */
+        agenda: (() => {
+          const lista = Array.isArray(d.agenda) ? d.agenda : []
+          if (!lista.length && d.proximo) lista.push(d.proximo)
+          return lista
+            .filter((x) => x && x.nombre && x.fecha)
+            .sort((a, b) => a.fecha.localeCompare(b.fecha))
+        })(),
         // `null` y no `{}`: la diferencia entre «nunca se ha medido» y «todos
         // los récords están en cero» es la que evita cuatro medallas falsas la
         // primera vez que se abre con datos ya dentro.
@@ -2915,9 +2953,13 @@
 
   // ---------- lo próximo ----------
 
+  /* Lo que aún no ha pasado, en orden. Hoy cuenta como pendiente. */
+  const loQueViene = () => estado.agenda.filter((x) => x.fecha >= hoy())
+
   function pintarProximo() {
     const caja = document.getElementById('proximo')
-    const pr = estado.proximo
+    const vienen = loQueViene()
+    const pr = vienen[0]
 
     if (!pr) {
       caja.innerHTML =
@@ -2925,12 +2967,16 @@
         `<button type="button" id="poner-proximo">Poner lo próximo</button>`
     } else {
       const faltan = daysBetweenIso(hoy(), pr.fecha)
-      const cuando =
-        faltan > 1 ? `Faltan ${faltan} días` : faltan === 1 ? 'Es mañana' : faltan === 0 ? 'Es hoy' : 'Ya pasó'
+      const cuando = faltan > 1 ? `Faltan ${faltan} días` : faltan === 1 ? 'Es mañana' : 'Es hoy'
+      // Lo que viene después no lleva cuenta atrás propia: la cifra grande es
+      // una sola, y dos números compitiendo no dejan ver ninguno.
+      const detras = vienen.length - 1
       caja.innerHTML =
-        (faltan >= 0 ? `<span class="dias-faltan">${faltan}</span>` : '') +
-        `<span class="que"><b>${escapar(pr.nombre)}</b><br>${cuando}</span>` +
-        `<button type="button" id="poner-proximo">Cambiar</button>`
+        `<span class="dias-faltan">${faltan}</span>` +
+        `<span class="que"><b>${escapar(pr.nombre)}</b><br>${cuando}` +
+        (detras ? ` · y ${detras} más después` : '') +
+        `</span>` +
+        `<button type="button" id="poner-proximo">Ver</button>`
     }
     document.getElementById('poner-proximo').addEventListener('click', abrirProximo)
   }
@@ -2938,48 +2984,86 @@
   const daysBetweenIso = (a, b) =>
     Math.round((desdeIso(b) - desdeIso(a)) / 86400000)
 
+  /*
+    El calendario de la temporada.
+
+    Lo que ya pasó no se borra solo: se queda en la lista, apagado, hasta que lo
+    quites. Que algo desaparezca de tu calendario sin que tú lo toques es la
+    clase de cosa que te hace dudar de si lo llegaste a anotar.
+  */
   function abrirProximo() {
-    const pr = estado.proximo ?? { nombre: '', fecha: hoy() }
+    const filas = estado.agenda
+      .map((x, i) => {
+        const faltan = daysBetweenIso(hoy(), x.fecha)
+        const pasado = faltan < 0
+        return (
+          `<div class="fila-agenda" data-pasado="${pasado ? 'si' : 'no'}">` +
+          `<span><b>${escapar(x.nombre)}</b>` +
+          `<span class="cuando">${enPalabras(x.fecha)} · ${
+            pasado ? 'ya pasó' : faltan === 0 ? 'hoy' : faltan === 1 ? 'mañana' : `en ${faltan} días`
+          }</span></span>` +
+          `<button type="button" class="boton" data-tipo="callado" data-quitar="${i}"` +
+          ` style="padding:0.3rem 0.5rem">quitar</button></div>`
+        )
+      })
+      .join('')
+
     document.getElementById('hoja-registro').innerHTML = `
-      <h2 id="titulo-hoja">Lo próximo</h2>
+      <h2 id="titulo-hoja">Tu calendario</h2>
       <p style="margin:0;font-size:0.9rem;color:var(--tinta-suave)">
-        Un partido, una fecha de la liga, una copa. Sirve para tener algo hacia
-        dónde mirar en los días que no entrenas.
+        Fechas de liga, copas, finales. La cuenta regresiva de arriba muestra la
+        más cercana.
       </p>
+      ${filas ? `<div class="agenda">${filas}</div>` : ''}
+
+      <hr class="separador">
+
       <div class="campo">
         <label class="rotulo" for="pr-nombre">Qué es</label>
         <input id="pr-nombre" type="text" autocomplete="off"
-               placeholder="Copa, final, fecha de liga" value="${escapar(pr.nombre)}">
+               placeholder="Copa, final, fecha de liga" value="">
       </div>
       <div class="campo">
         <label class="rotulo" for="pr-fecha">Cuándo</label>
-        <input id="pr-fecha" type="date" value="${pr.fecha}">
+        <input id="pr-fecha" type="date" value="${hoy()}">
       </div>
+      <button class="boton" data-tipo="fuerte" id="guardar-proximo" type="button"
+              style="width:100%">+ Agregar</button>
+
       <div class="acciones">
-        <button class="boton" id="cancelar" type="button">Cancelar</button>
-        <button class="boton" data-tipo="fuerte" id="guardar-proximo" type="button">Guardar</button>
+        <button class="boton" id="cancelar" type="button">Cerrar</button>
       </div>
-      ${estado.proximo ? '<button class="boton" data-tipo="callado" id="quitar-proximo" type="button">Quitar</button>' : ''}
     `
     document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+
     document.getElementById('guardar-proximo').addEventListener('click', () => {
-      const nombre = document.getElementById('pr-nombre').value.trim()
+      const campo = document.getElementById('pr-nombre')
+      const nombre = campo.value.trim()
       if (!nombre) {
-        document.getElementById('pr-nombre').focus()
-        document.getElementById('pr-nombre').placeholder = 'Falta el nombre'
+        campo.focus()
+        campo.placeholder = 'Falta el nombre'
         return
       }
-      estado.proximo = { nombre, fecha: document.getElementById('pr-fecha').value || hoy() }
+      estado.agenda = [
+        ...estado.agenda,
+        { nombre, fecha: document.getElementById('pr-fecha').value || hoy() }
+      ].sort((a, b) => a.fecha.localeCompare(b.fecha))
       guardar()
-      cerrarHoja()
       pintar()
+      // La hoja se vuelve a dibujar en vez de cerrarse: una temporada se carga
+      // de una sentada, y cerrar después de cada fecha obliga a abrir otra vez.
+      abrirProximo()
     })
-    document.getElementById('quitar-proximo')?.addEventListener('click', () => {
-      estado.proximo = null
+
+    document.querySelector('.agenda')?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-quitar]')
+      if (!b) return
+      estado.agenda = estado.agenda.filter((_, i) => i !== Number(b.dataset.quitar))
       guardar()
-      cerrarHoja()
       pintar()
+      abrirProximo()
     })
+
     document.getElementById('telon').hidden = false
   }
 

@@ -69,7 +69,11 @@ eq('asistencias desconocidas', r.dias[0].partidos[0].asistencias, null)
 eq('minutos desconocidos', r.dias[0].partidos[0].minutos, null)
 
 eq('los logros se conservan', r.logros, { 'primer-toque': '2026-09-01' })
-eq('lo próximo también', r.proximo, { nombre: 'Copa', fecha: '2026-09-14' })
+// `proximo` guardaba un solo compromiso y pasó a ser una lista. Lo que estaba
+// guardado tiene que entrar a esa lista, no evaporarse: es la fecha de su copa.
+eq('el compromiso guardado entra al calendario', r.agenda, [
+  { nombre: 'Copa', fecha: '2026-09-14' }
+])
 
 console.log('\n- la forma NUEVA se lee tal cual -')
 const nuevo = leyendo({
