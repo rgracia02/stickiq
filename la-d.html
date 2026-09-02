@@ -1417,28 +1417,39 @@
   <div class="pantalla" data-pantalla="hoy">
 
     <section class="cancha">
-      <svg class="lineas" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <svg class="lineas" viewBox="-2 -2 95.4 59" preserveAspectRatio="xMidYMid slice"
+           aria-hidden="true">
         <!--
-          Un palo, y no líneas de cancha.
+          La cancha entera, con las medidas del reglamento.
 
-          Antes había tres arcos sueltos que pretendían ser la D y la línea de
-          23. Recortados por el borde de la tarjeta no se leían como una cancha:
-          se leían como curvas al azar. El palo es el objeto más reconocible del
-          deporte y no necesita contexto para entenderse.
-
-          Apunta hacia la izquierda a propósito: ahí está el botón de la pelota.
-          El dibujo y el control se leen juntos como un gesto de golpear.
+          Antes hubo tres arcos sueltos, despues un palo dibujado a mano y luego
+          un semicirculo en vez de una D. Los tres fallaron por lo mismo: una
+          forma que depende de que yo acierte a ojo, sin poder mirarla. Esta sale
+          de numeros del reglamento y se comprueba: cada arco tiene que estar
+          centrado en un poste, y el tramo recto tiene que medir 3,66.
         -->
-        <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
-          <!-- El mango. -->
-          <path d="M 366 4 L 292 152" stroke-width="13" opacity="0.85" />
-          <!-- El gancho de la cabeza, que en césped curva hacia el lado plano. -->
-          <path d="M 292 152 C 280 178 254 192 236 180 C 222 170 226 152 242 150"
-                stroke-width="13" opacity="0.85" />
-          <!-- La empuñadura, un poco más marcada. -->
-          <path d="M 366 4 L 344 48" stroke-width="15" opacity="0.5" />
-          <!-- Y la línea de fondo, para que el palo se apoye en algo. -->
-          <line x1="0" y1="214" x2="400" y2="214" stroke-width="2" opacity="0.45" />
+        <g fill="none" stroke="#fff" stroke-width="0.55" stroke-linejoin="round">
+          <rect x="0" y="0" width="91.4" height="55" />
+
+          <line x1="45.7" y1="0" x2="45.7" y2="55" />
+          <line x1="22.9" y1="0" x2="22.9" y2="55" />
+          <line x1="68.5" y1="0" x2="68.5" y2="55" />
+
+          <!-- La D de la izquierda. -->
+          <path d="M 0 11.04 A 14.63 14.63 0 0 1 14.63 25.67 L 14.63 29.33
+                   A 14.63 14.63 0 0 1 0 43.96" />
+          <path d="M 0 6.04 A 19.63 19.63 0 0 1 19.63 25.67 L 19.63 29.33
+                   A 19.63 19.63 0 0 1 0 48.96" stroke-dasharray="1.6 1.6" opacity="0.6" />
+
+          <!-- Y la de la derecha, espejada. -->
+          <path d="M 91.4 11.04 A 14.63 14.63 0 0 0 76.77 25.67 L 76.77 29.33
+                   A 14.63 14.63 0 0 0 91.4 43.96" />
+          <path d="M 91.4 6.04 A 19.63 19.63 0 0 0 71.77 25.67 L 71.77 29.33
+                   A 19.63 19.63 0 0 0 91.4 48.96" stroke-dasharray="1.6 1.6" opacity="0.6" />
+
+          <!-- Los arcos, por fuera de la linea de fondo. -->
+          <rect x="-1.6" y="25.67" width="1.6" height="3.66" opacity="0.9" />
+          <rect x="91.4" y="25.67" width="1.6" height="3.66" opacity="0.9" />
         </g>
       </svg>
 

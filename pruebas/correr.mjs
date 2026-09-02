@@ -55,6 +55,16 @@ if (!filtro) {
     process.exit(1)
   }
   console.log('  ok    revisión estructural')
+
+  // El dibujo de la cancha sale de números del reglamento, así que se comprueba
+  // como cualquier otra cosa. Ya evitó dos errores que solo se veían mirando.
+  const cancha = await correr(join(RAIZ, 'scripts', 'verificar-cancha.mjs'), 'cancha')
+  if (cancha.codigo !== 0) {
+    console.log(cancha.salida.trimEnd())
+    console.log('\nLa cancha del encabezado está mal dibujada.')
+    process.exit(1)
+  }
+  console.log('  ok    cancha del encabezado')
 }
 
 const archivos = readdirSync(AQUI)
