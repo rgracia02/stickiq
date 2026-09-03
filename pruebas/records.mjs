@@ -21,9 +21,9 @@ const fuente =
   trozo('const LOGROS =', 'function pintarLogros') +
   // `mejorPor` escapa el nombre del rival antes de meterlo en el texto: sin
   // esto la prueba carga una funcion que llama a algo que no existe.
-  trozo('  const escapar =', '  // ---------- la hoja de registro') +
+  trozo('  const cuantos =', '  // ---------- la hoja de registro') +
   trozo('  const RECORDS =', '  function pintarRecords') +
-  '\nexport { RECORDS, recordsAhora, revisarRecords, iso, desdeIso }'
+  '\nexport { RECORDS, recordsAhora, revisarRecords, iso, desdeIso, cuantos }'
 
 const M = await cargar(fuente)
 
@@ -126,6 +126,27 @@ si('el nombre del rival llega al record', texto.includes('img'))
 si('pero sin < que abra una etiqueta', !texto.includes('<'), texto.slice(0, 70))
 si('y sin > que la cierre', !texto.includes('>'))
 si('viene escapado', texto.includes('&lt;img'), texto.slice(0, 70))
+
+console.log('\n- uno no lleva plural -')
+/*
+  «1 goles» no lo escribe nadie, pero lo escribia la app — y justo en la
+  lamina, la unica pantalla hecha para que la vean otros. Habia treinta
+  ternarios de plural repartidos por el archivo y a cinco sitios no llegaron.
+
+  En español no basta con la palabra: son «1 semana seguida» y «3 semanas
+  seguidas». El adjetivo tambien concuerda.
+*/
+eq('uno va en singular', M.cuantos(1, 'gol', 'goles'), '1 gol')
+eq('dos en plural', M.cuantos(2, 'gol', 'goles'), '2 goles')
+eq('cero en plural', M.cuantos(0, 'gol', 'goles'), '0 goles')
+eq('y el adjetivo concuerda con el',
+  M.cuantos(1, 'semana seguida', 'semanas seguidas'), '1 semana seguida')
+eq('igual que en plural',
+  M.cuantos(3, 'semana seguida', 'semanas seguidas'), '3 semanas seguidas')
+
+const racha = M.RECORDS.find((r) => r.id === 'racha')
+eq('el record de racha usa el singular', racha.unidad(1), '1 semana seguida')
+eq('y el plural', racha.unidad(4), '4 semanas seguidas')
 
 console.log(`\n${ok} ok, ${mal} fallos`)
 process.exit(mal ? 1 : 0)

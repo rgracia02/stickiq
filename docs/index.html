@@ -1006,15 +1006,42 @@
     no una pantalla con secciones: lo que se manda al grupo es una imagen, y una
     imagen no tiene scroll. Todo lo que importa tiene que caber de una.
   */
+  /*
+    La lamina cabe en una pantalla, porque existe para fotografiarla.
+
+    Medida con una temporada de verdad: 900 px de contenido en una caja de
+    747. El pie y el boton de cerrar quedaban fuera, asi que cualquier captura
+    salia recortada — justo en la unica pantalla pensada para que la vean
+    otros. Se recorto de donde sobraba: la D mas baja, los rotulos y las filas
+    mas apretados, y el boton de cerrar FUERA de la lamina, porque un boton no
+    va en una foto.
+  */
   .lamina {
     background: linear-gradient(160deg, var(--cancha) 0%, var(--cancha-honda) 130%);
     color: var(--linea);
     border-radius: var(--radio);
-    padding: 1.5rem 1.25rem 1.25rem;
+    padding: 1.1rem 1.1rem 0.9rem;
     max-width: 380px;
     width: 100%;
-    max-height: 92vh;
+    max-height: 86vh;
     overflow-y: auto;
+  }
+
+  /* La D de la lamina no necesita el alto de la de la hoja: aca no se toca,
+     solo se mira. */
+  .lamina .cancha-d { max-height: 96px; }
+
+  /* Las filas de «lo mejor» se aprietan: dos lineas siguen cabiendo, pero sin
+     el aire de una tarjeta que aca no hace falta. */
+  .lamina .hito { padding: 0.4rem 0; line-height: 1.25; }
+  .lamina .firma { margin: 0.7rem 0 0; }
+
+  .fiesta:has(.lamina) { align-content: center; gap: 0.7rem; }
+
+  .cerrar-lamina {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
   }
 
   .lamina .encabezado-lamina {
@@ -1026,7 +1053,7 @@
   .lamina h3 {
     font-family: "Barlow Condensed", Barlow, sans-serif;
     font-weight: 700;
-    font-size: 2rem;
+    font-size: 1.7rem;
     letter-spacing: 0.02em;
     text-transform: uppercase;
     margin: 0;
@@ -1042,7 +1069,7 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.5rem;
-    margin-bottom: 1.1rem;
+    margin-bottom: 0.6rem;
   }
   .cifras-lamina div { text-align: center; }
   .cifras-lamina .cifra { font-size: 1.9rem; display: block; }
@@ -1068,7 +1095,7 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgb(255 255 255 / 0.6);
-    margin: 1.1rem 0 0.5rem;
+    margin: 0.75rem 0 0.35rem;
   }
 
   .lamina .hito {
@@ -1083,8 +1110,8 @@
 
   .escuditos { display: flex; flex-wrap: wrap; gap: 0.35rem; }
   .escuditos i {
-    width: 30px;
-    height: 30px;
+    width: 27px;
+    height: 27px;
     border-radius: 50%;
     display: grid;
     place-items: center;
@@ -2537,6 +2564,18 @@
       })
       .join('')
   }
+
+  /*
+    «1 goles» no lo escribe nadie, pero lo escribia la app.
+
+    Habia treinta ternarios de plural repartidos por el archivo y la lamina se
+    habia quedado sin ellos en cinco sitios — precisamente la unica pantalla
+    hecha para que la vean otros. Un ayudante no se olvida.
+
+    El plural va con su numero porque en español no basta con la palabra: son
+    «1 semana seguida» y «3 semanas seguidas», dos concordancias, no una.
+  */
+  const cuantos = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`
 
   const escapar = (s) =>
     String(s).replace(
@@ -4500,7 +4539,8 @@
     {
       id: 'racha',
       nombre: 'Racha más larga',
-      unidad: (n) => `${n} ${n === 1 ? 'semana' : 'semanas'} seguidas`,
+      // «1 semana seguida», no «1 semana seguidas»: el adjetivo tambien concuerda.
+      unidad: (n) => cuantos(n, 'semana seguida', 'semanas seguidas'),
       de: () => ({ valor: resumenLogros().rachaMax, cuando: null })
     }
   ]
@@ -4631,9 +4671,9 @@
         ${
           partidos.length
             ? `<p class="titulillo">Resultados</p>` +
-              `<div class="hito"><b>${ganados} ganados</b><span>${empatados} empatados · ${
-                partidos.length - ganados - empatados
-              } perdidos</span></div>`
+              `<div class="hito"><b>${cuantos(ganados, 'ganado', 'ganados')}</b><span>` +
+              `${cuantos(empatados, 'empatado', 'empatados')} · ` +
+              `${cuantos(partidos.length - ganados - empatados, 'perdido', 'perdidos')}</span></div>`
             : ''
         }
 
@@ -4641,7 +4681,7 @@
 
         ${
           conseguidos.length
-            ? `<p class="titulillo">${conseguidos.length} logros</p>` +
+            ? `<p class="titulillo">${cuantos(conseguidos.length, 'logro', 'logros')}</p>` +
               `<div class="escuditos">${conseguidos
                 .map((l) => `<i title="${escapar(l.nombre)}">${l.marca}</i>`)
                 .join('')}</div>`
@@ -4651,16 +4691,16 @@
         ${
           t.golesEntreno || t.asistEntreno
             ? `<p class="titulillo">En entrenamientos, aparte</p>` +
-              `<div class="hito"><b>${t.golesEntreno} goles</b><span>${t.asistEntreno} asistencias</span></div>`
+              `<div class="hito"><b>${cuantos(t.golesEntreno, 'gol', 'goles')}</b>` +
+              `<span>${cuantos(t.asistEntreno, 'asistencia', 'asistencias')}</span></div>`
             : ''
         }
 
         <p class="firma">StickIQ · hockey césped</p>
-        <button class="boton" id="cerrar-lamina" type="button"
-                style="width:100%;margin-top:1rem;background:var(--pelota);border-color:var(--pelota);color:#3a2c00">
-          Cerrar
-        </button>
       </div>
+      <button class="boton cerrar-lamina" data-tipo="fuerte" id="cerrar-lamina" type="button">
+        Cerrar
+      </button>
     `
     document.getElementById('fiesta').hidden = false
     document.getElementById('cerrar-lamina').addEventListener('click', () => {
