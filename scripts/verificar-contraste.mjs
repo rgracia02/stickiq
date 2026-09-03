@@ -86,6 +86,8 @@ const PARES = (t) => [
   // Marcas de grafico: no son texto, pero distinguen series.
   // El acento decorativo: la cifra del nivel y la del record son texto grande.
   ['la cifra del nivel y del record', color(t, '--acento'), color(t, '--tarjeta'), 3],
+  // El boton principal: marron fijo sobre la pelota, en los cuatro temas.
+  ['el botón principal, sobre amarillo', [0x3a, 0x2c, 0x00], color(t, '--pelota'), 4.5],
   ['marca de entrenamiento', color(t, '--marca-entreno'), color(t, '--tarjeta'), 3],
   ['marca de partido', color(t, '--marca-partido'), color(t, '--tarjeta'), 3],
   ['marca de asistencia', color(t, '--marca-asist'), color(t, '--tarjeta'), 3],

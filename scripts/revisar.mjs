@@ -155,6 +155,61 @@ if (existsSync(sitio) && existsSync(sw)) {
   ok('docs/sw.js existe', false, 'corre: npm run construir')
 }
 
+// ---------- ids que se repiten ----------
+
+/*
+  Ningun id puede salir de una funcion que se llama mas de una vez.
+
+  `dibujoDeLaD` incrustaba id="svg-d" y se usa dos veces: el mapa de la
+  temporada y el de la hoja. Con dos elementos del mismo id, getElementById
+  devuelve el primero del documento, y el cableado de la hoja quedaba enganchado
+  al mapa de temporada — oculto y de cero pixeles de ancho, asi que la cuenta
+  del toque dividia por cero.
+
+  El efecto: la funcion mas distintiva de la app dejaba de responder en cuanto
+  ubicabas tu primer gol, sin ningun error en consola. Con datos vacios
+  funcionaba siempre, que es como la probe yo.
+
+  Esto cuenta cuantas veces aparece cada id literal en las plantillas. Dos
+  apariciones del mismo id en el JS son un id duplicado en cuanto la funcion
+  corre dos veces.
+*/
+/*
+  Los que se repiten a proposito, cada uno con su motivo.
+
+  La lista es corta y explicita para que siga sirviendo: cualquier id NUEVO que
+  se escriba dos veces salta, que es justo lo que hacia falta. `svg-d` no
+  estaba aca y no lo habria estado nunca, porque no era una hoja alternativa —
+  era el mismo dibujo pintado en dos sitios a la vez.
+*/
+const UNO_A_LA_VEZ = {
+  // Las cuatro hojas se pintan dentro de #hoja-registro, que tiene un solo
+  // ocupante: partido, entrenamiento, mis datos o calendario.
+  'titulo-hoja': 4,
+  cancelar: 4,
+  sensacion: 2,
+  // Dos ramas de un if/else sobre el mismo #proximo.
+  'poner-proximo': 2,
+  // La medalla y la lamina se pintan dentro de #fiesta, tambien uno a la vez.
+  // Son tres: el hueco del marcado mas las dos plantillas que lo reemplazan.
+  medalla: 3
+}
+
+// Marcado y script juntos: un id del marcado repetido en una plantilla es un
+// duplicado igual, y mirar solo el script lo dejaba pasar.
+const cuenta = new Map()
+for (const m of (marcado + js).matchAll(/id="([\w-]+)"/g)) {
+  cuenta.set(m[1], (cuenta.get(m[1]) ?? 0) + 1)
+}
+const repetidos = [...cuenta]
+  .filter(([id, n]) => n > 1 && UNO_A_LA_VEZ[id] !== n)
+  .map(([id, n]) => `${id} (x${n})`)
+ok(
+  'ningun id nuevo se escribe dos veces en las plantillas',
+  repetidos.length === 0,
+  repetidos.join(', ')
+)
+
 // ---------- quien tapa a quien ----------
 
 /*

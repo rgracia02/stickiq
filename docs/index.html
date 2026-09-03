@@ -417,6 +417,14 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    /* La leyenda se va a su propia linea. Metida en la fila, apretaba el
+       rotulo y la cuenta hasta partirlos en tres lineas cada uno. */
+    flex-wrap: wrap;
+  }
+
+  .semana .rotulo,
+  .semana .cuenta {
+    white-space: nowrap;
   }
 
   .ranuras { display: flex; gap: 0.4rem; }
@@ -428,6 +436,27 @@
     background: rgb(255 255 255 / 0.2);
   }
   .ranura[data-llena="si"] { background: var(--pelota); }
+
+  /*
+    El casillero de un partido se distingue del de un entrenamiento.
+
+    Cuentan igual para la semana, pero no son lo mismo: separar lo del
+    entrenamiento de lo oficial es una regla vieja de esta app. Un aro en vez
+    de un relleno, para que la diferencia se vea sin leer nada — y no es solo
+    el color, que en una barra de ocho pixeles no se distinguiria.
+  */
+  .ranura[data-llena="si"][data-de="partido"] {
+    background: none;
+    box-shadow: inset 0 0 0 2px var(--pelota);
+  }
+
+  .semana .mezcla {
+    /* Ocupa la fila entera, debajo: es una nota, no un dato que compita. */
+    flex-basis: 100%;
+    margin: 0.1rem 0 0;
+    font-size: 0.74rem;
+    color: rgb(255 255 255 / 0.72);
+  }
 
   .semana .cuenta {
     margin-left: auto;
@@ -1488,12 +1517,25 @@
   }
   .boton:hover { border-color: var(--cancha); }
 
+  /*
+    El boton principal es amarillo, no azul.
+
+    La primera linea de esta hoja dice que el amarillo se usa «solo donde hay
+    que tocar o donde hubo gol». La app lo cumplia en todas partes —la pelota,
+    el boton de los logros— menos en el boton que cierra la tarea mas larga,
+    que era azul. La regla estaba escrita y el sitio mas importante era la
+    excepcion que nadie habia anotado.
+
+    El texto es un marron fijo, no `--tinta`: en tema oscuro la tinta es casi
+    blanca y sobre amarillo desapareceria. Es el mismo par que ya usaba el
+    boton de la medalla, y lo mide verificar-contraste.mjs.
+  */
   .boton[data-tipo="fuerte"] {
-    background: var(--cancha);
-    border-color: var(--cancha);
-    color: #fff;
+    background: var(--pelota);
+    border-color: var(--pelota);
+    color: #3a2c00;
   }
-  .boton[data-tipo="fuerte"]:hover { background: #0c5077; }
+  .boton[data-tipo="fuerte"]:hover { background: #e0b30f; border-color: #e0b30f; }
 
   .boton[data-tipo="callado"] {
     border: none;
@@ -1534,6 +1576,49 @@
     que un elemento tape a otro, y a mi se me paso mirando capturas donde la
     hoja nunca estaba abierta.
   */
+  /*
+    Debajo de la hoja (35) y de la fiesta (40): un aviso flotante encima del
+    boton de guardar es el mismo fallo que ya arregle en la barra de pestañas.
+  */
+  /*
+    El error de un campo: rojo, debajo, y no se borra al teclear.
+
+    El rojo no va solo: el borde tambien cambia y el texto dice que hacer. El
+    color por si mismo no es una senal — hay quien no lo distingue.
+  */
+  .error-campo {
+    margin: 0.35rem 0 0;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--rojo);
+  }
+
+  [aria-invalid="true"] {
+    border-color: var(--rojo) !important;
+    box-shadow: inset 0 0 0 1px var(--rojo);
+  }
+
+  .aviso-hecho {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(5.2rem + env(safe-area-inset-bottom));
+    z-index: 25;
+    padding: 0.6rem 1rem;
+    border-radius: 999px;
+    background: var(--tinta);
+    color: var(--papel);
+    font-size: 0.88rem;
+    font-weight: 500;
+    box-shadow: 0 6px 24px rgb(0 0 0 / 0.22);
+    animation: sube 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  @keyframes sube {
+    from { opacity: 0; transform: translate(-50%, 8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
   .telon {
     position: fixed;
     inset: 0;
@@ -1735,8 +1820,9 @@
             aria-label="Ajustes y mis datos" title="Ajustes y mis datos"><span aria-hidden="true">⚙️</span></button>
   </header>
 
+  <!-- El aviso de espacio SI va arriba: si no cabe, nada de lo de abajo se
+       esta guardando, y eso manda sobre cualquier otra cosa. -->
   <div id="aviso-espacio" class="aviso" hidden></div>
-  <div id="aviso-copia" class="aviso-suave" hidden></div>
 
   <!-- ══════════ HOY ══════════ -->
   <div class="pantalla" data-pantalla="hoy">
@@ -1797,8 +1883,22 @@
         <span class="rotulo">Esta semana</span>
         <div class="ranuras" id="ranuras"></div>
         <span class="cuenta" id="cuenta-semana"></span>
+        <!-- Despues de la cuenta, no antes: con `flex-wrap` la leyenda ocupa
+             la fila entera, y puesta en medio empujaba el «2 de 3» a una
+             tercera linea, solo, contra el borde. -->
+        <span class="mezcla" id="mezcla-semana" hidden></span>
       </div>
     </section>
+
+    <!--
+      El aviso de respaldo va DEBAJO de la cancha, no encima.
+
+      Estaba de primero, antes que nada, y empujaba la pelota unos 470 px hacia
+      abajo en el primer pintado. La regla fundacional de esta app es que
+      registrar sea mas rapido que no registrar; una tarea domestica no puede
+      ganarle el sitio a la accion principal. Sigue estando, y sigue avisando.
+    -->
+    <div id="aviso-copia" class="aviso-suave" hidden></div>
 
     <section class="tarjeta">
       <div class="encabezado-seccion"><h2>Tu nivel</h2></div>
@@ -1918,6 +2018,8 @@
 <div class="fiesta" id="fiesta" hidden>
   <div class="medalla" role="dialog" aria-modal="true" aria-labelledby="titulo-medalla" id="medalla"></div>
 </div>
+
+<div class="aviso-hecho" id="aviso-hecho" role="status" hidden></div>
 
 <div class="telon" id="telon" hidden>
   <div class="hoja-registro vidrio" role="dialog" aria-modal="true" aria-labelledby="titulo-hoja" id="hoja-registro"></div>
@@ -2156,6 +2258,7 @@
   // ---------- entrenamientos ----------
 
   const entrenoHoy = () => estado.entrenamientos.some((e) => e.fecha === hoy())
+  const partidoHoy = () => estado.dias.some((d) => d.fecha === hoy() && d.partidos.length)
   const deHoy = () => estado.entrenamientos.find((e) => e.fecha === hoy())
 
   /*
@@ -2176,9 +2279,25 @@
 
   const alternarHoy = () => alternarDia(hoy())
 
+  /*
+    Lo que hiciste esta semana, separado por tipo.
+
+    Antes solo contaba entrenamientos, asi que jugabas un partido —la cosa mas
+    exigente que haces— y la app seguia diciendo «0 de 3». Terminabas la tarea
+    mas larga del producto y te contestaba que no habias hecho nada.
+
+    Cuentan los dos, pero NO se mezclan en un solo numero: separar lo del
+    entrenamiento de lo oficial es una regla vieja de esta app y no se rompe
+    por comodidad. Cada casillero sabe de que es.
+  */
   const deEstaSemana = () => {
     const lunes = lunesDe(new Date())
-    return estado.entrenamientos.filter((e) => lunesDe(desdeIso(e.fecha)) === lunes).length
+    const enSemana = (f) => lunesDe(desdeIso(f)) === lunes
+    const entrenos = estado.entrenamientos.filter((e) => enSemana(e.fecha)).length
+    const partidos = estado.dias
+      .filter((d) => enSemana(d.fecha))
+      .reduce((n, d) => n + d.partidos.length, 0)
+    return { entrenos, partidos, total: entrenos + partidos }
   }
 
   // ---------- temporada ----------
@@ -2240,10 +2359,23 @@
     pelota.innerHTML = hecho ? '<span class="tic">&#10003;</span>' : 'Entrené<br>hoy'
     pelota.setAttribute('aria-label', hecho ? 'Ya marcaste hoy' : 'Marcar que entrenaste hoy')
 
-    document.getElementById('titular-hoy').textContent = hecho ? 'Listo por hoy' : '¿Entrenaste hoy?'
-    document.getElementById('sub-hoy').textContent = hecho
-      ? enPalabras(hoy())
-      : 'Un toque y queda. Nada más que llenar.'
+    /*
+      Si hoy jugaste, la app no puede seguir preguntandote si entrenaste.
+
+      Era el peor momento del producto: guardabas un partido y el titular
+      seguia diciendo «¿Entrenaste hoy?» encima de un «0 de 3». La respuesta
+      correcta a haber jugado no es una pregunta.
+    */
+    const jugoHoy = partidoHoy()
+    document.getElementById('titular-hoy').textContent = hecho
+      ? 'Listo por hoy'
+      : jugoHoy
+        ? 'Jugaste hoy'
+        : '¿Entrenaste hoy?'
+    document.getElementById('sub-hoy').textContent =
+      hecho || jugoHoy
+        ? enPalabras(hoy())
+        : 'Un toque y queda. Nada más que llenar.'
     document.getElementById('btn-deshacer').hidden = !hecho
     document.getElementById('btn-detalle-entreno').hidden = !hecho
 
@@ -2268,12 +2400,24 @@
     for (let i = 0; i < estado.meta; i++) {
       const r = document.createElement('span')
       r.className = 'ranura'
-      r.dataset.llena = i < semana ? 'si' : 'no'
+      // Los partidos van primero: son lo que menos se repite y lo que mas pesa.
+      r.dataset.llena = i < semana.total ? 'si' : 'no'
+      r.dataset.de = i < semana.partidos ? 'partido' : 'entreno'
       ranuras.append(r)
     }
-    const extra = Math.max(0, semana - estado.meta)
+    const extra = Math.max(0, semana.total - estado.meta)
     document.getElementById('cuenta-semana').textContent =
-      `${semana} de ${estado.meta}` + (extra ? ` (+${extra})` : '')
+      `${semana.total} de ${estado.meta}` + (extra ? ` (+${extra})` : '')
+    // La leyenda solo aparece cuando hay las dos cosas: con una sola, un
+    // rotulo explicando la diferencia es ruido.
+    const mezcla = document.getElementById('mezcla-semana')
+    const hayDeLosDos = semana.partidos > 0 && semana.entrenos > 0
+    mezcla.hidden = !hayDeLosDos
+    if (hayDeLosDos) {
+      mezcla.textContent =
+        `${semana.partidos} ${semana.partidos === 1 ? 'partido' : 'partidos'} · ` +
+        `${semana.entrenos} ${semana.entrenos === 1 ? 'entreno' : 'entrenos'}`
+    }
 
     const t = totales()
     // El tercer elemento es la nota chica: lo del entrenamiento, que existe pero
@@ -2430,6 +2574,7 @@
         <input id="rival" type="text" autocomplete="off"
                placeholder="${rivales.length ? 'O escribe uno nuevo' : 'Nombre del club'}"
                value="${escapar(borrador.rival)}">
+        <p class="error-campo" id="error-rival" hidden></p>
       </div>
 
       <div class="marcador-doble">
@@ -2642,8 +2787,25 @@
       c.querySelectorAll('button').forEach((b) => {
         b.addEventListener('click', () => {
           const paso = Number(b.dataset.paso)
+          /*
+            Tus goles no pueden pasar de los del equipo.
+
+            Se guardaba «1-0» con «tus goles: 5» sin una sola queja, y ese
+            numero imposible se propagaba a los records, a los totales y a la
+            lamina que le mandas al equipo. Un dato que se contradice a si
+            mismo es peor que un dato ausente: parece cierto.
+
+            El tope se aplica en los dos sentidos — bajar el marcador propio
+            tambien baja tus goles si quedaron por encima.
+          */
           borrador[campo] = Math.max(0, borrador[campo] + paso)
-          c.querySelector('output').textContent = borrador[campo]
+          if (campo === 'goles') borrador.goles = Math.min(borrador.goles, borrador.nuestros)
+          if (campo === 'nuestros') borrador.goles = Math.min(borrador.goles, borrador.nuestros)
+          for (const otro of document.querySelectorAll('.contador')) {
+            otro.querySelector('output').textContent = borrador[otro.dataset.campo]
+          }
+          const topeGoles = document.querySelector('.contador[data-campo="goles"] [data-paso="1"]')
+          if (topeGoles) topeGoles.disabled = borrador.goles >= borrador.nuestros
 
           // La pregunta de los penales solo existe con el marcador empatado, y
           // aparece o desaparece en el momento en que lo dejas así.
@@ -2682,6 +2844,15 @@
   }
 
   function cablearFichas() {
+    document.getElementById('rival')?.addEventListener('input', (e) => {
+      // Se limpia en cuanto escribe algo. Dejarlo puesto sobre un campo ya
+      // lleno seria un error que miente.
+      if (!e.target.value.trim()) return
+      e.target.removeAttribute('aria-invalid')
+      const err = document.getElementById('error-rival')
+      if (err) err.hidden = true
+    })
+
     document.getElementById('penales')?.addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
@@ -2835,11 +3006,26 @@
     borrador.torneo = document.getElementById('torneo').value.trim() || 'Partido'
     borrador.fecha = document.getElementById('fecha').value || hoy()
 
+    /*
+      El unico campo obligatorio, dicho de verdad.
+
+      Antes esto solo cambiaba el `placeholder` a gris por defecto y devolvia
+      el foco. Sin rojo, sin borde, sin region viva — y el texto se borraba al
+      primer tecleo. De pie en una cancha eso se lee como «el boton esta roto»,
+      no como «falta un dato».
+    */
+    const caja = document.getElementById('rival')
+    const error = document.getElementById('error-rival')
     if (!borrador.rival) {
-      document.getElementById('rival').focus()
-      document.getElementById('rival').placeholder = 'Falta el rival'
+      caja.setAttribute('aria-invalid', 'true')
+      caja.setAttribute('aria-describedby', 'error-rival')
+      error.textContent = 'Escribe contra quién jugaste para poder guardar.'
+      error.hidden = false
+      caja.focus()
       return
     }
+    caja.removeAttribute('aria-invalid')
+    error.hidden = true
 
     // Los partidos del mismo día y torneo se juntan: una fecha son tres
     // partidos, y verlos como tres tarjetas sueltas pierde que fueron el mismo
@@ -2879,9 +3065,35 @@
       sensacion: borrador.sensacion
     })
 
+    // Se lee ANTES de cerrar: `cerrarHoja` pone el borrador en null, asi que
+    // preguntarle despues siempre contesta «guardado», nunca «actualizado».
+    const editaba = Boolean(borrador.editando)
     guardar()
     cerrarHoja()
     pintar()
+    avisar(editaba ? 'Partido actualizado' : 'Partido guardado')
+  }
+
+  /*
+    Un aviso corto de que algo quedo.
+
+    Guardar un partido no confirmaba NADA: la hoja desaparecia y, con suerte,
+    salia un logro. Sin logros no pasaba nada en absoluto — terminabas la tarea
+    mas larga de la app y la app se quedaba callada.
+
+    Va con role="status" para que un lector de pantalla lo anuncie sin robar el
+    foco, y se va solo: es una confirmacion, no algo que haya que despachar.
+  */
+  let avisoEnCurso = null
+  function avisar(texto) {
+    const caja = document.getElementById('aviso-hecho')
+    if (!caja) return
+    caja.textContent = texto
+    caja.hidden = false
+    clearTimeout(avisoEnCurso)
+    avisoEnCurso = setTimeout(() => {
+      caja.hidden = true
+    }, 2600)
   }
 
   function cerrarHoja() {
@@ -3054,7 +3266,21 @@
         )
         .join('')
 
-      document.getElementById('svg-d').addEventListener('click', (e) => {
+      /*
+        Se busca DENTRO de #poner-d, no por id en toda la pagina.
+
+        `dibujoDeLaD` marcaba su SVG con id="svg-d" y se usa dos veces: el mapa
+        de la temporada y el de esta hoja. `getElementById` devuelve el primero
+        del documento, o sea el de temporada — que ademas esta oculto y mide
+        cero de ancho, asi que `puntoDelToque` dividia por cero y contestaba
+        «eso esta fuera de la D».
+
+        Resultado: la funcion mas distintiva de la app dejaba de responder en
+        cuanto ubicabas tu primer gol, sin ningun error. Antes del primer gol el
+        mapa de temporada no existe y habia un solo SVG, asi que probandola con
+        datos vacios funcionaba siempre.
+      */
+      document.getElementById('poner-d').querySelector('svg').addEventListener('click', (e) => {
         const hueco = borrador.posiciones.find((g) => typeof g.x !== 'number')
         if (!hueco) return
         const punto = puntoDelToque(e.currentTarget, e)
@@ -4054,7 +4280,7 @@
       .map((g) => `<circle class="punto" cx="${g.x}" cy="${g.y}" r="0.85" />`)
       .join('')
     return (
-      `<svg class="cancha-d${poner ? ' d-poner' : ''}" id="svg-d"` +
+      `<svg class="cancha-d${poner ? ' d-poner' : ''}"` +
       ` viewBox="${-ancho / 2} -1.2 ${ancho} ${alto + 1.2}" role="img"` +
       ` aria-label="Semicírculo de tiro con ${puntos.length} goles marcados">` +
       // El césped dentro de la D, para que se lea como una zona y no como una raya.
@@ -4661,12 +4887,39 @@
     }
   })
 
+  /*
+    Tocar el fondo cerraba la hoja y tiraba el partido a medio llenar.
+
+    En un telefono de 375 px la hoja deja unos 120 px de fondo descubierto
+    arriba, que es justo donde cae el pulgar al estirarse para desplazar con
+    una mano. Sin aviso, sin borrador, sin nada: escribias el marcador, los
+    goles y la duracion, rozabas el borde y se iba todo.
+
+    Ahora solo se cierra solo si no perdiste nada. Con algo escrito, pregunta.
+  */
+  const borradorConAlgo = () =>
+    Boolean(
+      borrador &&
+        (borrador.rival ||
+          borrador.nuestros ||
+          borrador.suyos ||
+          borrador.goles ||
+          borrador.asistencias ||
+          borrador.sensacion ||
+          typeof borrador.minutos === 'number')
+    )
+
+  function intentarCerrar() {
+    if (!borradorConAlgo()) return cerrarHoja()
+    if (confirm('¿Botas este partido? Lo que escribiste se pierde.')) cerrarHoja()
+  }
+
   document.getElementById('telon').addEventListener('click', (e) => {
-    if (e.target.id === 'telon') cerrarHoja()
+    if (e.target.id === 'telon') intentarCerrar()
   })
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !document.getElementById('telon').hidden) cerrarHoja()
+    if (e.key === 'Escape' && !document.getElementById('telon').hidden) intentarCerrar()
   })
 
   // Al volver a la pestaña puede haber cambiado el día: la app decía «listo por
