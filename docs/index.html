@@ -1771,6 +1771,20 @@
   }
   .telon[hidden] { display: none !important; }
 
+  /*
+    Lo de dentro de la hoja NO se aplasta.
+
+    La hoja es una columna flexible con altura maxima. Cuando el contenido no
+    cabe, el reparto por defecto encoge a los hijos por debajo de su propio
+    alto — y como el desbordamiento sigue siendo visible, el texto se sale y se
+    pisa con el de abajo.
+
+    Llevaba ahi desde siempre: el recuadro de la copia pide cinco lineas y se
+    veia como una sola. Solo se noto cuando meti un parrafo largo y quedo
+    montado sobre «Ultima copia». Los dos sintomas, un mismo reparto.
+  */
+  .hoja-registro > * { flex-shrink: 0; }
+
   .hoja-registro {
     background: color-mix(in srgb, var(--papel) 72%, transparent);
     width: 100%;
@@ -2892,6 +2906,7 @@
     cablearSensacion()
     cablearFichas()
     document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+
     document.getElementById('guardar-partido').addEventListener('click', guardarPartido)
     /*
       Borrar un partido se pregunta; restaurar una copia se preguntaba.
@@ -3588,6 +3603,8 @@
         datos del sitio o cambias de teléfono, se van. Sacar una copia de vez en
         cuando es lo único que los protege.
       </p>
+      <p class="detalle" id="promesa" style="margin:0"></p>
+
       <p style="margin:0;font-size:0.85rem;color:var(--tinta-suave)">
         Última copia: <b>${
           dias === null ? 'nunca' : dias === 0 ? 'hoy' : `hace ${dias} ${dias === 1 ? 'día' : 'días'}`
@@ -3596,7 +3613,7 @@
 
       <textarea id="volcado" readonly rows="5" class="caja-texto">${escapar(copia)}</textarea>
       <button class="boton" data-tipo="fuerte" id="copiar" type="button" style="width:100%">
-        Copiar y mandármela por WhatsApp
+        Guardar una copia
       </button>
 
       <hr class="separador">
@@ -3618,6 +3635,35 @@
 
     document.getElementById('cancelar').addEventListener('click', cerrarHoja)
 
+    /*
+      Se dice en voz alta si el navegador promete conservar los datos.
+
+      Es la diferencia entre «esto se puede ir si al telefono le falta espacio»
+      y «esto solo se va si tu lo borras», y el tiene derecho a saber en cual
+      de las dos esta sin preguntarselo a nadie.
+
+      Si el navegador ni siquiera sabe contestar, se dice eso: un hueco en
+      blanco donde deberia haber una respuesta es peor que la respuesta mala.
+    */
+    const contarLaVerdad = (texto) => {
+      const caja = document.getElementById('promesa')
+      if (caja) caja.textContent = texto
+    }
+    if (navigator.storage?.persisted) {
+      navigator.storage
+        .persisted()
+        .then((seguro) =>
+          contarLaVerdad(
+            seguro
+              ? 'Este navegador se comprometió a conservarlos: no los borra por falta de espacio. Cambiar de teléfono sigue siendo cosa tuya.'
+              : 'Este navegador NO se compromete a conservarlos: puede borrarlos si le falta espacio. La copia es lo único que los protege.'
+          )
+        )
+        .catch(() => contarLaVerdad('Este navegador no dice si los conserva. Saca la copia igual.'))
+    } else {
+      contarLaVerdad('Este navegador no dice si los conserva. Saca la copia igual.')
+    }
+
     document.getElementById('tema').addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
@@ -3629,21 +3675,65 @@
       })
     })
 
+    /*
+      Sacar la copia, por el mejor camino que permita el telefono.
+
+      Antes era «copia este texto y pegalo donde lo guardes»: trabajo suyo,
+      con el portapapeles de por medio, y por eso no lo hacia. Un respaldo que
+      cuesta es un respaldo que no existe.
+
+      Se intenta en orden:
+
+      1. Compartir el ARCHIVO. En el iPhone abre la hoja de siempre —WhatsApp,
+         Archivos, AirDrop, iCloud— y queda un .json de verdad, no un texto
+         pegado en un chat. Es un toque.
+      2. Descargarlo. En el sitio propio cae en Archivos y iCloud lo respalda.
+         Dentro de un Artifact esto no funciona: el visor bloquea las descargas
+         que inicia la propia pagina.
+      3. El portapapeles, como siempre.
+
+      La fecha se anota SOLO si de verdad salio. Cancelar la hoja de compartir
+      no es haber sacado una copia, y decir que si seria peor que no decir nada.
+    */
     document.getElementById('copiar').addEventListener('click', async (e) => {
       const area = document.getElementById('volcado')
-      try {
-        await navigator.clipboard.writeText(copia)
-        e.target.textContent = 'Copiado — ahora pégala donde la guardes'
-        // La fecha se anota SOLO si de verdad se copio. Antes se anotaba
-        // tambien en el catch, asi que la app podia decir «ultima copia: hoy»
-        // de una copia que nunca salio del recuadro.
+      const nombre = `stickiq-${hoy()}.json`
+      const hecho = (texto) => {
+        e.target.textContent = texto
         estado.copiado = new Date().toISOString()
         estado.avisoVisto = null
         guardar()
         pintarAvisoCopia()
+      }
+
+      const archivo = new File([copia], nombre, { type: 'application/json' })
+      if (navigator.canShare?.({ files: [archivo] })) {
+        try {
+          await navigator.share({ files: [archivo], title: 'Mi temporada' })
+          return hecho('Listo, quedó guardada')
+        } catch (err) {
+          // Cancelar no es un fallo: se sale sin anotar nada ni ofrecer otra
+          // cosa, porque el que cancelo fue el.
+          if (err?.name === 'AbortError') return
+        }
+      }
+
+      try {
+        const url = URL.createObjectURL(archivo)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = nombre
+        a.click()
+        URL.revokeObjectURL(url)
+        return hecho('Descargada — búscala en Archivos')
+      } catch {}
+
+      try {
+        await navigator.clipboard.writeText(copia)
+        return hecho('Copiada — ahora pégala donde la guardes')
       } catch {
-        // Sin portapapeles, seleccionar el texto deja el trabajo a un toque. Pero
-        // eso no es una copia hecha, y no se anota como tal.
+        // Sin nada de lo anterior, seleccionar el texto deja el trabajo a un
+        // toque. Pero eso no es una copia hecha, y no se anota como tal.
         area.select()
         e.target.textContent = 'Selecciónala y cópiala a mano'
       }
@@ -5165,6 +5255,20 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) pintar()
   })
+
+  /*
+    Pedirle al navegador que NO borre estos datos.
+
+    Por defecto, lo que guarda una pagina web es «desechable»: si al telefono
+    le falta espacio, se va sin avisar. `persist()` pide que se traten como
+    algo que hay que conservar. Chrome y Android lo conceden solo si usas la
+    app seguido; Safari en iPhone todavia no lo implementa y devuelve que no.
+    O sea que ayuda donde puede y no estorba donde no.
+
+    Esto NO reemplaza a la copia. Es una peticion, no una garantia, y ninguna
+    peticion sobrevive a cambiar de telefono.
+  */
+  navigator.storage?.persist?.().catch(() => {})
 
   // El tema antes de pintar: al reves se ve un parpadeo del tema anterior.
   aplicarTema()
