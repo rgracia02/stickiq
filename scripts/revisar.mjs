@@ -133,6 +133,36 @@ if (!existsSync(sitio)) {
   )
 }
 
+// ---------- texto de fuera ----------
+
+/*
+  Todo nombre escrito por una persona se pinta escapado.
+
+  «Restaurar» acepta una copia pegada, asi que el rival y el torneo pueden
+  venir de otro. Un nombre sin escapar dentro de un innerHTML es codigo
+  corriendo en la pagina que guarda toda la temporada. Ya habia uno asi en los
+  records, y no lo vio ninguna prueba: por eso se revisa la forma, no el caso.
+*/
+/*
+  Solo dos formas de nombrar a alguien son seguras dentro de un `${...}`:
+  escaparlo, o no pintarlo. Cualquier otra cosa se denuncia.
+*/
+const SEGURAS = [
+  // Lo pinta, pero escapado. Es la forma correcta.
+  /escapar\(/,
+  // No pinta el nombre: compara dos claves y sale un booleano.
+  /===|!==/
+]
+const sinEscapar = [...js.matchAll(/\$\{[^}]*\.(?:rival|torneo)[^}]*\}/g)]
+  .map((m) => m[0])
+  .filter((t) => !SEGURAS.some((r) => r.test(t)))
+  .map((t) => t.replace(/\s+/g, ' '))
+ok(
+  'ningun nombre de rival o torneo se pinta sin escapar',
+  sinEscapar.length === 0,
+  sinEscapar.join('  |  ')
+)
+
 // ---------- temas ----------
 
 /*

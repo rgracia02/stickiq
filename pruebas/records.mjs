@@ -19,6 +19,9 @@ const fuente =
   trozo('function iso(', '// ---------- entrenamientos') +
   trozo('function todosLosPartidos', '// ---------- logros') +
   trozo('const LOGROS =', 'function pintarLogros') +
+  // `mejorPor` escapa el nombre del rival antes de meterlo en el texto: sin
+  // esto la prueba carga una funcion que llama a algo que no existe.
+  trozo('  const escapar =', '  // ---------- la hoja de registro') +
   trozo('  const RECORDS =', '  function pintarRecords') +
   '\nexport { RECORDS, recordsAhora, revisarRecords, iso, desdeIso }'
 
@@ -102,6 +105,27 @@ M.ponerEstado({
 })
 eq('cuenta la mejor, no la última', M.recordsAhora()['semana'].valor, 4)
 si('y dice cuál semana fue', M.recordsAhora()['semana'].cuando.includes('semana del'))
+
+console.log('\n- un nombre de rival no puede traer codigo -')
+/*
+  Este es el unico camino por el que entra texto que Rodrigo no escribio:
+  Restaurar acepta una copia pegada, y esa copia se la pudo mandar cualquiera.
+  El texto de `cuando` termina en dos innerHTML, asi que un rival llamado
+  <img onerror=...> corria codigo en la pagina que guarda toda la temporada.
+*/
+const MALO = '<img src=x onerror=alert(1)>'
+M.ponerEstado({
+  meta: 3,
+  entrenamientos: [],
+  dias: [{ fecha: '2026-03-07', torneo: 'Liga', partidos: [
+    { rival: MALO, nuestros: 3, suyos: 0, goles: 3, asistencias: 0, formato: 11, periodos: 4 }
+  ] }]
+})
+const texto = Object.values(M.recordsAhora()).map((v) => v.cuando ?? '').join(' ')
+si('el nombre del rival llega al record', texto.includes('img'))
+si('pero sin < que abra una etiqueta', !texto.includes('<'), texto.slice(0, 70))
+si('y sin > que la cierre', !texto.includes('>'))
+si('viene escapado', texto.includes('&lt;img'), texto.slice(0, 70))
 
 console.log(`\n${ok} ok, ${mal} fallos`)
 process.exit(mal ? 1 : 0)

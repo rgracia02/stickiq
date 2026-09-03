@@ -3980,11 +3980,23 @@
     }
   ]
 
+  /*
+    El nombre del rival se escapa ACA, donde se arma el texto.
+
+    `cuando` termina en dos innerHTML —la ficha de records y el resumen de
+    temporada— y era el unico sitio de la app donde un nombre escrito por una
+    persona se pintaba sin escapar. Escribiendolo tu no pasa nada: el riesgo
+    esta en «Restaurar», que acepta una copia pegada. Una copia ajena con un
+    rival llamado `<img onerror=...>` corria codigo en la pagina, y esa pagina
+    tiene acceso a toda tu temporada.
+  */
   function mejorPor(partidos, medir) {
     let mejor = { valor: 0, cuando: null }
     for (const x of partidos) {
       const v = medir(x)
-      if (v > mejor.valor) mejor = { valor: v, cuando: `contra ${x.rival}, ${enPalabras(x.fecha)}` }
+      if (v > mejor.valor) {
+        mejor = { valor: v, cuando: `contra ${escapar(x.rival)}, ${enPalabras(x.fecha)}` }
+      }
     }
     return mejor
   }
