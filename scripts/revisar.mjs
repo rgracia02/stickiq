@@ -155,6 +155,41 @@ if (existsSync(sitio) && existsSync(sw)) {
   ok('docs/sw.js existe', false, 'corre: npm run construir')
 }
 
+// ---------- quien tapa a quien ----------
+
+/*
+  Nada flotante puede quedar por encima de la hoja abierta.
+
+  La barra de pestañas estaba en z-index 30 y la hoja en 20: la barra tapaba el
+  final de la hoja, o sea el torneo, la fecha y el boton de guardar. Se podia
+  llenar un partido entero y no poder guardarlo.
+
+  Lo encontro Rodrigo usandola. Ninguna prueba lo veia —ninguna mira si un
+  elemento tapa a otro— y a mi se me paso mirando capturas con la hoja cerrada.
+  Asi que se revisa el numero, que es lo unico que se puede revisar sin pintar.
+
+  La fiesta SI va encima: es una celebracion a pantalla completa y se cierra
+  sola.
+*/
+const zDe = (sel) => {
+  const i = css.indexOf(sel)
+  if (i === -1) return null
+  const n = css.slice(i, css.indexOf('}', i)).match(/z-index:\s*(\d+)/)
+  return n ? Number(n[1]) : null
+}
+const zHoja = zDe('.telon {')
+const zBarra = zDe('.barra-abajo {')
+ok(
+  'la hoja abierta queda por encima de la barra de pestañas',
+  zHoja !== null && zBarra !== null && zHoja > zBarra,
+  zHoja !== null && zBarra !== null && zHoja > zBarra ? '' : `hoja ${zHoja}, barra ${zBarra}`
+)
+ok(
+  'y la barra ademas se esconde con la hoja abierta',
+  /body:has\(\.telon:not\(\[hidden\]\)\)[^{]*\.barra-abajo/.test(css),
+  ''
+)
+
 // ---------- texto de fuera ----------
 
 /*

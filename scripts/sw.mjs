@@ -111,7 +111,9 @@ export const estilo = `
     left: 50%;
     transform: translateX(-50%);
     bottom: calc(5.2rem + env(safe-area-inset-bottom));
-    z-index: 40;
+    /* Debajo de la hoja (35): un aviso flotante sobre el boton de guardar es
+       el mismo fallo que acabo de arreglar en la barra de pestañas. */
+    z-index: 25;
     display: flex;
     align-items: center;
     gap: 0.7rem;

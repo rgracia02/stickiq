@@ -1306,6 +1306,33 @@
     width: min(360px, calc(100vw - 2rem));
   }
 
+  /*
+    Los iconos de las pestañas.
+
+    Van con `aria-hidden`: la etiqueta ya dice «Temporada», y un lector de
+    pantalla que ademas lea «grafico de barras» solo alarga el recorrido. El
+    emoji es para el ojo, no para el oido.
+
+    `font-family` propia y no la de la pagina: sin esto, en algunos Android el
+    emoji se pinta con la tipografia de texto y sale un cuadro vacio.
+  */
+  .icono {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    font-size: 1em;
+    line-height: 1;
+    margin-right: 0.32em;
+    /* El emoji trae su propio color y no debe heredar el de la pestaña activa. */
+    -webkit-text-fill-color: initial;
+  }
+
+  /* Un boton que es solo un icono: cuadrado, no una capsula estirada. */
+  .boton-icono {
+    font-size: 1.15rem;
+    min-width: 44px;
+    padding: 0 0.5rem;
+    line-height: 1;
+  }
+
   .barra-abajo button {
     flex: 1;
     height: 44px;
@@ -1405,6 +1432,17 @@
 
   /* ---------- hoja de registro ---------- */
 
+  /*
+    La hoja va POR ENCIMA de la barra de pestañas.
+
+    Estaba en 20 y la barra en 30, asi que la barra flotaba sobre la hoja
+    abierta y tapaba justo el final: el torneo, la fecha y —lo grave— el boton
+    de guardar. Se podia llenar un partido entero y no poder guardarlo.
+
+    Lo encontro el usandola. Ninguna prueba lo veia porque ninguna prueba mira
+    que un elemento tape a otro, y a mi se me paso mirando capturas donde la
+    hoja nunca estaba abierta.
+  */
   .telon {
     position: fixed;
     inset: 0;
@@ -1412,7 +1450,20 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    z-index: 20;
+    z-index: 35;
+  }
+
+  /*
+    Y ademas se esconde, no solo se queda debajo.
+
+    Con la hoja abierta las pestañas no hacen nada: son una capsula flotando
+    sobre un fondo oscurecido que ademas roba setenta pixeles justo donde estan
+    los botones. El z-index de arriba es el que garantiza que se pueda tocar
+    —`:has` no existe en Safari viejo—; esto es para que se vea bien.
+  */
+  body:has(.telon:not([hidden])) .barra-abajo,
+  body:has(.fiesta:not([hidden])) .barra-abajo {
+    display: none;
   }
   .telon[hidden] { display: none !important; }
 
@@ -1589,7 +1640,8 @@
       <h1>StickIQ</h1>
       <p>Tu temporada de césped</p>
     </div>
-    <button class="boton" data-tipo="callado" id="btn-datos" type="button">Datos</button>
+    <button class="boton boton-icono" data-tipo="callado" id="btn-datos" type="button"
+            aria-label="Ajustes y mis datos" title="Ajustes y mis datos"><span aria-hidden="true">⚙️</span></button>
   </header>
 
   <div id="aviso-espacio" class="aviso" hidden></div>
@@ -1763,9 +1815,12 @@
 <div class="borde-scroll" aria-hidden="true"></div>
 
 <nav class="barra-abajo vidrio" id="barra-abajo" role="tablist" aria-label="Secciones">
-  <button type="button" role="tab" data-pantalla="hoy" aria-selected="true">Hoy</button>
-  <button type="button" role="tab" data-pantalla="temporada" aria-selected="false">Temporada</button>
-  <button type="button" role="tab" data-pantalla="logros" aria-selected="false">Logros</button>
+  <button type="button" role="tab" data-pantalla="hoy" aria-selected="true">
+    <span class="icono" aria-hidden="true">🏑</span>Hoy</button>
+  <button type="button" role="tab" data-pantalla="temporada" aria-selected="false">
+    <span class="icono" aria-hidden="true">📊</span>Temporada</button>
+  <button type="button" role="tab" data-pantalla="logros" aria-selected="false">
+    <span class="icono" aria-hidden="true">🏆</span>Logros</button>
 </nav>
 
 
