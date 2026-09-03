@@ -22,6 +22,35 @@ function ok(nombre, cond, detalle = '') {
   if (!cond) mal++
 }
 
+// ---------- que el script sea JavaScript ----------
+
+/*
+  Lo primero de todo: que el codigo PARSEE.
+
+  Suena obvio y no lo estaba. Escribi un comentario dentro de una plantilla y
+  puse el nombre de un elemento entre backticks —mi manera normal de citar
+  codigo— sin darme cuenta de que esos backticks cerraban la plantilla. La app
+  quedo rota entera, en blanco, y las 254 pruebas pasaron igual: ninguna
+  cargaba la pagina completa, solo trozos que si eran validos por separado.
+
+  Verde en la consola sobre una app que no arranca es peor que rojo.
+*/
+const { writeFileSync } = await import('node:fs')
+const { execFileSync } = await import('node:child_process')
+const { tmpdir } = await import('node:os')
+const temporal = join(tmpdir(), 'stickiq-comprobar.mjs')
+let comoFallo = ''
+try {
+  writeFileSync(temporal, js)
+  execFileSync(process.execPath, ['--check', temporal], { stdio: 'pipe' })
+} catch (e) {
+  comoFallo =
+    String(e.stderr ?? e.message)
+      .split(/\r?\n/)
+      .find((l) => /Error/.test(l)) ?? 'no parsea'
+}
+ok('el script de la pagina es JavaScript valido', comoFallo === '', comoFallo)
+
 // ---------- estilos ----------
 
 const css = marcado.slice(marcado.indexOf('<style>'), marcado.indexOf('</style>'))

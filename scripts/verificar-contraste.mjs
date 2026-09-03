@@ -13,7 +13,20 @@
  */
 import { marcado } from '../pruebas/marco.mjs'
 
-const css = marcado.slice(marcado.indexOf('<style>'), marcado.indexOf('</style>'))
+/*
+  Los comentarios se quitan ANTES de leer los tokens.
+
+  Sin esto, una frase como «la marca de partido: un token con dos trabajos»
+  dentro de un comentario se lee como una declaracion, y su valor —que corre
+  hasta el primer punto y coma— se traga el token que venga despues. Me paso:
+  escribi un comentario y el verificador dejo de ver --rojo-fondo, informando
+  que faltaba un color que estaba ahi.
+
+  Un analizador que lee prosa no analiza nada.
+*/
+const css = marcado
+  .slice(marcado.indexOf('<style>'), marcado.indexOf('</style>'))
+  .replace(/\/\*[\s\S]*?\*\//g, '')
 
 /** Los tres bloques de tema, tal como estan en el archivo. */
 function bloque(desde, hasta) {
@@ -86,6 +99,15 @@ const PARES = (t) => [
   // Marcas de grafico: no son texto, pero distinguen series.
   // El acento decorativo: la cifra del nivel y la del record son texto grande.
   ['la cifra del nivel y del record', color(t, '--acento'), color(t, '--tarjeta'), 3],
+  /*
+    Lo que no se puede deshacer, medido dos veces.
+
+    El texto blanco sobre el fondo rojo (4,5, es texto), y el boton contra la
+    tarjeta donde vive (3, no es texto pero informa: un boton que no se separa
+    de su fondo no se ve). «Si, reemplazar» estaba en 3,03 en tema oscuro.
+  */
+  ['«sí, reemplazar», el texto', [255, 255, 255], color(t, '--rojo-fondo'), 4.5],
+  ['«sí, reemplazar», contra la tarjeta', color(t, '--rojo-fondo'), color(t, '--tarjeta'), 3],
   // El boton principal: marron fijo sobre la pelota, en los cuatro temas.
   ['el botón principal, sobre amarillo', [0x3a, 0x2c, 0x00], color(t, '--pelota'), 4.5],
   ['marca de entrenamiento', color(t, '--marca-entreno'), color(t, '--tarjeta'), 3],

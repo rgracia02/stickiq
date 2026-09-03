@@ -26,6 +26,21 @@
     --verde-texto: #1a7a50;
     --rojo: #c0392f;
 
+    /*
+      El rojo de FONDO, distinto del rojo de TEXTO.
+
+      Eran el mismo, y no pueden serlo: un rojo que se lee bien como texto
+      sobre papel claro tiene que ser oscuro, y en tema oscuro se aclara para
+      seguir leyendose — momento en que ya no aguanta texto blanco encima.
+      «Si, reemplazar» quedaba en 3,03:1 en oscuro, bajo el minimo, en la
+      unica accion de la app que no se puede deshacer.
+
+      Es el mismo defecto que tenia la marca de partido, que hacia de color de
+      dato y de acento a la vez. Un token con dos trabajos no se nota hasta que
+      un tema quiere cambiar uno y no el otro.
+    */
+    --rojo-fondo: #c0392f;
+
 
     /* Marcas de grafico. No son los colores de marca: el amarillo pelota
        tiene 1,59:1 sobre blanco y desaparece. Estos pasaron el validador
@@ -75,6 +90,9 @@
       --verde: #3fbd84;
       --verde-texto: #3fbd84;
       --rojo: #ef6b60;
+      /* Mas oscuro que --rojo para aguantar blanco (4,73:1), y bastante claro
+         para separarse de la tarjeta oscura (3,47:1). Los dos, medidos. */
+      --rojo-fondo: #cf4034;
       --marca-entreno: #bd8718;
       --marca-partido: #2f8fcc;
       --celda-vacia: #1b2c37;
@@ -94,6 +112,7 @@
     --verde: #3fbd84;
     --verde-texto: #3fbd84;
     --rojo: #ef6b60;
+    --rojo-fondo: #cf4034;
     --marca-entreno: #bd8718;
     --marca-partido: #2f8fcc;
     --celda-vacia: #1b2c37;
@@ -129,6 +148,7 @@
     --verde: #1f8a5b;
     --verde-texto: #1a7a50;
     --rojo: #c0392f;
+    --rojo-fondo: #c0392f;
     --marca-entreno: #b8770a;
     --marca-partido: #1a7fbf;
     --celda-vacia: #f7e2ea;
@@ -1446,6 +1466,20 @@
   }
   .boton[data-tipo="fuerte"]:hover { background: #e0b30f; border-color: #e0b30f; }
 
+  /*
+    Lo que no se puede deshacer.
+
+    Estaba escrito a mano en dos sitios —borrar un partido y reemplazar todos
+    los datos— con `style="background:var(--rojo);color:#fff"`. Dos copias del
+    mismo estilo se separan, y el dia que una de las dos esta mal nadie se
+    entera. Ahora es un tipo de boton, y verificar-contraste.mjs lo mide.
+  */
+  .boton[data-tipo="peligro"] {
+    background: var(--rojo-fondo);
+    border-color: var(--rojo-fondo);
+    color: #fff;
+  }
+
   .boton[data-tipo="callado"] {
     border: none;
     background: none;
@@ -2683,7 +2717,7 @@
         `<div class="acciones">` +
         `<button class="boton" id="no-borrar" type="button">No</button>` +
         `<button class="boton" id="si-borrar" type="button"` +
-        ` style="background:var(--rojo);border-color:var(--rojo);color:#fff">Borrar</button>` +
+        ` data-tipo="peligro">Borrar</button>` +
         `</div></div>`
       document.getElementById('si-borrar').addEventListener('click', borrarPartido)
       document.getElementById('no-borrar').addEventListener('click', () => (caja.innerHTML = ''))
@@ -3306,6 +3340,7 @@
       <textarea id="pegado" rows="3" class="caja-texto"
                 placeholder="Pega acá el texto de una copia"></textarea>
       <p id="dice-copia" class="detalle" style="margin:0"></p>
+      <div id="confirmar-copia"></div>
       <button class="boton" id="revisar-pegado" type="button" style="width:100%">Revisar</button>
 
       <div class="acciones">
@@ -3351,15 +3386,31 @@
       const r = restaurarDesde(document.getElementById('pegado').value.trim())
       if (!r.ok) {
         dice.innerHTML = `<b style="color:var(--rojo)">${r.porque}</b>`
+        // Y se retira el boton de confirmar: revisar una copia mala despues de
+        // una buena dejaba «Si, reemplazar» ahi, apuntando a la copia anterior.
+        /*
+        El boton de confirmar se pinta en su propio hueco, no dentro del
+        parrafo de arriba.
+
+        Estaba inyectado dentro de #dice-copia, un parrafo .detalle de 22 px de
+        alto. El boton mide 44: se salia del parrafo y el boton «Revisar» de
+        abajo le pintaba encima. Solo asomaba una franja roja, y un toque en el
+        centro del boton rojo lo recibia «Revisar». La accion mas peligrosa de
+        la app era practicamente inalcanzable, y lo poco que se veia invitaba a
+        tocar el sitio equivocado.
+
+        Un boton no es un trozo de una frase.
+      */
+      document.getElementById('confirmar-copia').innerHTML = ''
         return
       }
       dice.innerHTML =
         `Esa copia trae <b>${r.entrenos}</b> ${r.entrenos === 1 ? 'entrenamiento' : 'entrenamientos'} ` +
         `y <b>${r.partidos}</b> ${r.partidos === 1 ? 'partido' : 'partidos'}. ` +
-        `Reemplaza todo lo que tienes ahora.` +
-        `<br><button class="boton" id="confirmar-restaurar" type="button"
-           style="margin-top:0.5rem;background:var(--rojo);border-color:var(--rojo);color:#fff">
-           Sí, reemplazar</button>`
+        `Reemplaza todo lo que tienes ahora.`
+      document.getElementById('confirmar-copia').innerHTML =
+        `<button class="boton" data-tipo="peligro" id="confirmar-restaurar"
+           type="button" style="width:100%;margin-top:0.5rem">Sí, reemplazar</button>`
       document.getElementById('confirmar-restaurar').addEventListener('click', () => {
         try {
           localStorage.setItem(CLAVE, JSON.stringify(r.datos))
