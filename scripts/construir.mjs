@@ -13,6 +13,8 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
 import { dibujar } from './icono.mjs'
 import { worker, registro, estilo } from './sw.mjs'
 
@@ -71,6 +73,25 @@ ${registro}
 `
 
 mkdirSync(DESTINO, { recursive: true })
+
+/*
+  El script del envoltorio tambien tiene que parsear.
+
+  `revisar.mjs` comprueba el script de la app, pero este vive aca y no pasaba
+  por ningun lado. Un error de sintaxis en el registro del service worker se
+  habria publicado sin que nada chistara, y el sintoma —«la app no se actualiza
+  nunca»— es dificilisimo de atribuir a su causa.
+*/
+const guion = registro.slice(registro.indexOf('<script>') + 8, registro.lastIndexOf('</script>'))
+const temporal = join(tmpdir(), 'stickiq-envoltorio.mjs')
+writeFileSync(temporal, guion)
+try {
+  execFileSync(process.execPath, ['--check', temporal], { stdio: 'pipe' })
+} catch (e) {
+  console.error('el script del envoltorio no parsea:')
+  console.error(String(e.stderr ?? e.message).split(/\r?\n/).slice(0, 4).join('\n'))
+  process.exit(1)
+}
 
 const pagina = cabeza + app + '\n</body>\n</html>\n'
 writeFileSync(join(DESTINO, 'index.html'), pagina)

@@ -84,22 +84,59 @@ export const registro = `<div id="hay-version" hidden>
   <button type="button" id="recargar">Actualizar</button>
 </div>
 <script>
+  /*
+    El aviso se busca por CUATRO caminos, no por uno.
+
+    La primera version solo escuchaba 'updatefound', y no aparecio nunca. Tres
+    motivos, todos reales:
+
+    · El registro va despues del evento 'load'. Para entonces el navegador ya
+      pudo haber encontrado e instalado la version nueva por su cuenta, y ese
+      evento ya paso: se escucha un timbre que ya sono.
+    · El worker hace skipWaiting, asi que la version nueva toma el control de
+      inmediato. La pagina queda servida por la version nueva mostrando la
+      vieja, en silencio, que es exactamente lo que se veia.
+    · Una app anclada a la pantalla de inicio no se recarga: se abre y se
+      esconde durante dias. Sin pedir la comprobacion a mano, no hay ninguna.
+
+    Asi que: se mira si ya hay una esperando, se escucha 'updatefound', se
+    escucha el cambio de controlador, y se pide comprobar al volver a la app.
+  */
   if ('serviceWorker' in navigator) {
+    // Antes de registrar: si ya habia un controlador, lo que venga es una
+    // ACTUALIZACION. Si no lo habia, es la primera instalacion y no se avisa
+    // de nada — la pagina que se esta viendo ya es la nueva.
+    const habiaControlador = Boolean(navigator.serviceWorker.controller)
+    const avisar = () => {
+      if (habiaControlador) document.getElementById('hay-version').hidden = false
+    }
+
+    navigator.serviceWorker.addEventListener('controllerchange', avisar)
+
     addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').then((reg) => {
-        reg.addEventListener('updatefound', () => {
-          const nuevo = reg.installing
-          if (!nuevo) return
-          nuevo.addEventListener('statechange', () => {
-            // 'installed' con un controlador ya puesto = habia una version
-            // antes, o sea que esto es una actualizacion y no la instalacion.
-            if (nuevo.state === 'installed' && navigator.serviceWorker.controller) {
-              document.getElementById('hay-version').hidden = false
-            }
-          })
-        })
-      })
       document.getElementById('recargar').addEventListener('click', () => location.reload())
+
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        // Puede que ya estuviera lista antes de que llegaramos aca.
+        if (reg.waiting) avisar()
+
+        const vigilar = (w) => {
+          if (!w) return
+          w.addEventListener('statechange', () => {
+            if (w.state === 'installed' || w.state === 'activated') avisar()
+          })
+        }
+        vigilar(reg.installing)
+        reg.addEventListener('updatefound', () => vigilar(reg.installing))
+
+        // Y al volver a la app se pregunta si hay algo nuevo: anclada a la
+        // pantalla de inicio puede pasar dias sin recargarse.
+        const comprobar = () => {
+          if (!document.hidden) reg.update().catch(() => {})
+        }
+        document.addEventListener('visibilitychange', comprobar)
+        comprobar()
+      })
     })
   }
 </script>`
