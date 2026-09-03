@@ -631,6 +631,35 @@
   .nivel-texto { flex: 1; min-width: 0; }
   .nivel-texto .que-falta { font-size: 0.88rem; color: var(--tinta-suave); margin: 0.35rem 0 0.5rem; }
 
+  /*
+    La barra de proporcion. Las cifras van FUERA, arriba y a su lado: dentro se
+    recortarian en cuanto un tramo fuera chico, que es justo cuando mas hace
+    falta leerlas.
+  */
+  #proporcion { margin-top: 0.7rem; }
+  .prop-rotulos {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--tinta-suave);
+    margin-bottom: 0.25rem;
+  }
+  .prop-barra {
+    display: flex;
+    /* El hueco de 2 px es de superficie, no un borde: separa sin dibujar. */
+    gap: 2px;
+    height: 12px;
+  }
+  .prop-barra span {
+    display: block;
+    border-radius: 99px;
+    /* Un tramo en cero no se dibuja como una raya de 0 px que igual ocupa el
+       hueco: se va del todo. */
+    min-width: 0;
+  }
+  .prop-gol { background: var(--rojo-fondo); }
+  .prop-asist { background: var(--verde-fondo); }
+
   .medidor {
     height: 10px;
     border-radius: 99px;
@@ -2127,6 +2156,15 @@
       </div>
       <div class="resumen" id="resumen"></div>
       <p class="detalle" id="promedios" style="margin:0.6rem 0 0" hidden></p>
+      <div id="proporcion" hidden>
+        <div class="prop-rotulos">
+          <span id="prop-goles"></span><span id="prop-asist"></span>
+        </div>
+        <div class="prop-barra">
+          <span class="prop-gol" id="prop-tramo-gol"></span>
+          <span class="prop-asist" id="prop-tramo-asist"></span>
+        </div>
+      </div>
     </section>
 
     <section class="tarjeta">
@@ -2781,6 +2819,40 @@
       decir sobre cuantos partidos esta calculada — que en las asistencias
       importa, porque los partidos viejos no las traen.
     */
+    /*
+      La proporcion entre goles y asistencias, en una linea.
+
+      Lo pidio como grafico circular y le propuse esto: dos porciones no se
+      comparan bien y un circular ademas habria repetido dos numeros que ya
+      estan escritos dos veces en esta pantalla, perdiendo el detalle por
+      partido. Una barra dice la mezcla sin costar nada de eso.
+
+      Rojo y verde los eligio el. Esa pareja mide 6,0 de separacion bajo
+      deuteranopia, que es la banda donde solo vale CON refuerzo — por eso las
+      cifras van escritas al lado de su tramo y no dentro: la palabra dice cual
+      es cual, y el color acompaña en vez de cargar solo.
+
+      Las asistencias se cuentan con `sumaConocida`: los partidos viejos no las
+      traen, y contarlos como cero encogeria el tramo verde con datos que nadie
+      anoto.
+    */
+    const asistTot = sumaConocida(todosLosPartidos(), 'asistencias')
+    const golesTot = todosLosPartidos().reduce((n, x) => n + x.goles, 0)
+    const cajaProp = document.getElementById('proporcion')
+    const totalAporte = golesTot + asistTot.total
+    cajaProp.hidden = totalAporte === 0
+    if (totalAporte > 0) {
+      const pctG = Math.round((golesTot / totalAporte) * 100)
+      document.getElementById('prop-tramo-gol').style.width = pctG + '%'
+      document.getElementById('prop-tramo-asist').style.width = 100 - pctG + '%'
+      document.getElementById('prop-goles').textContent = cuantos(golesTot, 'gol', 'goles')
+      document.getElementById('prop-asist').textContent = cuantos(
+        asistTot.total,
+        'asistencia',
+        'asistencias'
+      )
+    }
+
     const pr = promedios()
     const cajaPr = document.getElementById('promedios')
     cajaPr.hidden = !pr
