@@ -58,7 +58,21 @@
     --marca-entreno: #b8770a;
     --marca-partido: #1a7fbf;
     --celda-vacia: #e3e9ee;
-    --marca-asist: #7b57c9;
+    /*
+      Las asistencias NO son otra identidad: son la otra parte del mismo
+      aporte. Por eso son un paso mas claro del MISMO azul y no un color
+      aparte — un tono distinto anuncia «esto es otra cosa», y no lo es.
+
+      Ademas el par que habia, azul contra morado, reprobaba el validador de
+      daltonismo: 4,1 de separacion bajo deuteranopia y 13,7 con vision normal,
+      bajo el minimo de 15. O sea que costaba distinguirlos incluso viendolos
+      todos. Dos pasos de un tono se separan por LUMINOSIDAD, que es lo que
+      sobrevive a cualquier daltonismo.
+
+      Validado con la herramienta, no a ojo: paso claro 3,21:1 contra la
+      tarjeta, monotono y de un solo tono.
+    */
+    --marca-asist: #3f97d0;
 
     /*
       El acento decorativo, separado del color de dato.
@@ -107,7 +121,9 @@
       --marca-entreno: #bd8718;
       --marca-partido: #2f8fcc;
       --celda-vacia: #1b2c37;
-      --marca-asist: #9b7ae0;
+      // En oscuro la rampa corre al reves: el paso de las asistencias es el
+      // MAS oscuro, porque la tarjeta es oscura. 3,38:1 contra ella.
+      --marca-asist: #2e77a8;
       --foco: #f5c518;
       --gol-cifra: #f5c518;
       --acento: #2f8fcc;
@@ -128,7 +144,7 @@
     --marca-entreno: #bd8718;
     --marca-partido: #2f8fcc;
     --celda-vacia: #1b2c37;
-    --marca-asist: #9b7ae0;
+    --marca-asist: #2e77a8;
     --foco: #f5c518;
     --gol-cifra: #f5c518;
     --acento: #2f8fcc;
@@ -165,7 +181,7 @@
     --marca-entreno: #b8770a;
     --marca-partido: #1a7fbf;
     --celda-vacia: #f7e2ea;
-    --marca-asist: #7b57c9;
+    --marca-asist: #3f97d0;
     --foco: #a3175c;
     --gol-cifra: #a3175c;
     --acento: #a3175c;
@@ -690,14 +706,47 @@
     position: relative;
     display: flex;
     align-items: flex-end;
-    gap: 2px;
+    justify-content: flex-start;
+    gap: 7px;
     height: 92px;
     border-bottom: 1px solid var(--borde);
     padding-bottom: 1px;
   }
 
+  /*
+    La linea del maximo: una referencia y su cifra, en vez de un numero encima
+    de cada barra. Un valor en cada punto es ruido y no se lee ninguno.
+  */
+  .tope-grafico {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid var(--borde);
+    pointer-events: none;
+  }
+  .tope-grafico span {
+    position: absolute;
+    right: 0;
+    top: -0.55rem;
+    font-size: 0.68rem;
+    color: var(--tinta-suave);
+    background: var(--tarjeta);
+    padding: 0 0.2rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+    Una barra tiene ancho de barra, no de bloque.
+
+    Con `flex: 1` y dos partidos, cada barra ocupaba media pantalla: dos
+    rectangulos saturados enormes, que es justo lo que un grafico no debe ser.
+    El tope de 26 px las mantiene como marcas y no como paredes, y la fila se
+    alinea a la izquierda para que dos partidos se lean como el principio de
+    una temporada y no como todo lo que hay.
+  */
   .columna {
-    flex: 1;
+    flex: 1 1 auto;
+    max-width: 26px;
     min-width: 0;
     height: 100%;
     display: flex;
@@ -878,6 +927,51 @@
 
   /* Barra apilada: el gol abajo, la asistencia encima, con 2 px del color de la
      tarjeta entre medio para que se lean como dos y no como un degradado. */
+  /*
+    La pareja: dos barras finas por partido, con el hueco de superficie de 2 px
+    entre ellas y uno mayor entre parejas, para que se lean como parejas.
+  */
+  .columna.par {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    max-width: 22px;
+  }
+  .mitad {
+    flex: 1;
+    border-radius: 3px 3px 0 0;
+    min-width: 0;
+  }
+  .leyenda-par { display: flex; align-items: center; gap: 0.4rem; }
+  /*
+    Gana a `.leyenda i`, que fija 11 x 11 para los cuadritos de siempre. Sin
+    esto el dibujito de la pareja salia apilado en un cuadrado de 11 px, que es
+    justo lo contrario de lo que tiene que enseñar.
+  */
+  .leyenda i.par-glifo {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    width: auto;
+    height: 14px;
+    margin-right: 0;
+    border-radius: 0;
+  }
+  .par-glifo b,
+  .par-glifo u {
+    display: block;
+    width: 5px;
+    border-radius: 2px 2px 0 0;
+  }
+  .par-glifo b { height: 14px; background: var(--marca-partido); }
+  .par-glifo u { height: 8px; background: var(--marca-asist); }
+
+  .mitad.gol { background: var(--marca-partido); }
+  .mitad.asist { background: var(--marca-asist); }
+  /* Cero no es una barra de altura cero: es una marca minima, para que se vea
+     que el partido existe y que ahi hubo un cero. */
+  .mitad[data-cero="si"] { background: var(--celda-vacia); }
+
   .apilada { display: flex; flex-direction: column-reverse; gap: 2px; width: 100%; }
   .apilada span { display: block; border-radius: 2px; }
   .apilada span:last-child { border-radius: 4px 4px 2px 2px; }
@@ -1754,6 +1848,24 @@
     una puerta. Y lleva su resumen debajo, mas chico, para que se pueda
     comprobar lo de dentro sin abrirlo.
   */
+  .cambiar-estructura {
+    font: inherit;
+    font-size: 0.72rem;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    background: none;
+    border: none;
+    color: var(--acento);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    /* Va en la etiqueta, no en una fila propia: es una nota, no una acción
+       principal. El objetivo táctil lo da el relleno. */
+    padding: 0.5rem 0.3rem;
+    margin-left: 0.2rem;
+  }
+
   .mas-detalles {
     width: 100%;
     font: inherit;
@@ -2938,6 +3050,7 @@
         <label class="rotulo">Dónde marcaste <span style="text-transform:none;font-weight:400">(opcional)</span></label>
         <div id="poner-d"></div>
         <p class="detalle" id="pie-d" style="margin-top:0.4rem"></p>
+        <p class="rotulo" id="rotulo-cuando-d" style="margin:0.9rem 0 0.35rem"></p>
         <div id="cuando-d"></div>
       </div>
       <div class="campo">
@@ -3253,6 +3366,23 @@
         .join(' · ')
     }
     pintarResumen()
+
+    /*
+      Y desde ahi se puede cambiar sin ir a buscarlo.
+
+      Abre el desplegable y lleva a la ficha de la estructura. Un dato que
+      manda sobre lo que estas viendo tiene que ser alcanzable desde donde lo
+      estas viendo.
+    */
+    document.getElementById('hoja-registro').addEventListener('click', (e) => {
+      if (!e.target.closest('#cambiar-estructura')) return
+      const caja = document.getElementById('detalles')
+      const boton = document.getElementById('mas-detalles')
+      if (caja.hidden) boton.click()
+      const fichas = document.getElementById('estructura')
+      fichas?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      fichas?.querySelector('button')?.focus()
+    })
 
     document.getElementById('mas-detalles')?.addEventListener('click', (e) => {
       const caja = document.getElementById('detalles')
@@ -3695,6 +3825,22 @@
       // Y el cuarto de cada uno, debajo. Opcional: un gol sin cuarto sigue
       // siendo un gol, y obligar a ponerlo haría más lento justo el momento en
       // que estás cansado entre partido y partido.
+      /*
+        Se dice de que estructura salen estos periodos.
+
+        Al mandar «Como se jugo» al desplegable, las fichas de aqui pasaron a
+        depender de un dato que ya no se ve: si el partido es de dos tiempos
+        salen dos, y si son cuatro cuartos salen cuatro, pero desde aca no hay
+        forma de saber cual esta puesta ni de cambiarla. El propio Rodrigo
+        pregunto exactamente eso.
+      */
+      const rotuloD = document.getElementById('rotulo-cuando-d')
+      if (rotuloD) {
+        rotuloD.innerHTML =
+          `Cuándo marcas <button type="button" class="cambiar-estructura" ` +
+          `id="cambiar-estructura">${estructuraDe(borrador).nombre} · cambiar</button>`
+      }
+
       document.getElementById('cuando-d').innerHTML = borrador.posiciones
         .map(
           (g, k) =>
@@ -4604,32 +4750,67 @@
       : graficoMinutos(caja, leyenda, pie, partidos)
   }
 
-  function graficoAporte(caja, leyenda, pie, partidos) {
-    const aporte = (x) => x.goles + (x.asistencias ?? 0)
-    const tope = Math.max(1, ...partidos.map(aporte))
+  /*
+    La linea del maximo, con su cifra a la derecha.
 
-    caja.innerHTML = partidos
+    Sin ninguna referencia, una barra alta no dice cuanto: solo dice «mas que
+    las otras». Y poner el numero encima de CADA barra es ruido que no se lee.
+    Una linea y una cifra bastan para leer el resto por proporcion.
+  */
+  const lineaTope = (tope, unidad) =>
+    `<div class="tope-grafico" style="bottom:${ALTO_GRAFICO - 4}px">` +
+    `<span>${tope}${unidad ? ' ' + unidad : ''}</span></div>`
+
+  /*
+    Goles y asistencias, en PAREJA y no apiladas.
+
+    Apiladas, las dos partes solo se distinguian por el tono, y ahi no hay
+    salida: separar mas los dos pasos del azul hace que el claro desaparezca
+    contra la tarjeta, y acercarlos hace que se confundan entre si. Lo medi —
+    el paso que aguanta la tarjeta queda a 1,36 del otro, o sea iguales.
+
+    Dos identidades de color tampoco: el validador reprueba azul contra morado
+    (4,1 bajo deuteranopia), y los tonos que si pasan ya significan otra cosa
+    en esta app — el ambar es entrenamiento, el verde ganado, el rojo perdido.
+
+    Asi que la diferencia la lleva la POSICION: izquierda goles, derecha
+    asistencias, siempre en el mismo orden. La posicion es un canal mas fuerte
+    que el color y no depende de distinguir tonos. El tono queda de refuerzo.
+  */
+  function graficoAporte(caja, leyenda, pie, partidos) {
+    const asistDe = (x) => x.asistencias ?? 0
+    const tope = Math.max(1, ...partidos.map((x) => Math.max(x.goles, asistDe(x))))
+    const alto = (n) => (n === 0 ? 3 : Math.max(5, Math.round((n / tope) * (ALTO_GRAFICO - 6))))
+
+    caja.insertAdjacentHTML('afterbegin', lineaTope(tope, ''))
+    caja.innerHTML += partidos
       .map((x, i) => {
-        const asist = x.asistencias ?? 0
-        const alto = (n) => (n === 0 ? 0 : Math.max(4, Math.round((n / tope) * (ALTO_GRAFICO - 4))))
-        const trozos =
-          aporte(x) === 0
-            ? '<span class="barra" data-cero="si" style="height:4px"></span>'
-            : `<span class="trozo-gol" style="height:${alto(x.goles)}px"></span>` +
-              (asist ? `<span class="trozo-asist" style="height:${alto(asist)}px"></span>` : '')
+        const a = asistDe(x)
         return (
-          `<button class="columna" type="button" data-i="${i}" aria-pressed="false"` +
-          ` aria-label="${escapar(x.rival)}: ${x.goles} goles, ${asist} asistencias">` +
-          `<span class="apilada">${trozos}</span></button>`
+          `<button class="columna par" type="button" data-i="${i}" aria-pressed="false"` +
+          ` aria-label="${escapar(x.rival)}: ${cuantos(x.goles, 'gol', 'goles')}, ` +
+          `${cuantos(a, 'asistencia', 'asistencias')}">` +
+          `<span class="mitad gol" data-cero="${x.goles === 0 ? 'si' : 'no'}"` +
+          ` style="height:${alto(x.goles)}px"></span>` +
+          `<span class="mitad asist" data-cero="${a === 0 ? 'si' : 'no'}"` +
+          ` style="height:${alto(a)}px"></span>` +
+          `</button>`
         )
       })
       .join('')
 
-    // Con dos series la leyenda es obligatoria: el color solo no dice cuál es
-    // cuál, y aquí ni siquiera hay eje que lo aclare.
+    /*
+      La leyenda enseña el ORDEN, no dos colores.
+
+      Dos cuadritos casi iguales no distinguen nada — es justo el problema que
+      acabamos de dejar de resolver con el color. Un dibujito de la pareja, con
+      la barra izquierda alta y la derecha baja, dice de un vistazo cual es
+      cual, y coincide con lo que se ve abajo.
+    */
     leyenda.innerHTML =
-      `<span><i style="background:var(--marca-partido)"></i>Goles</span>` +
-      `<span><i style="background:var(--marca-asist)"></i>Asistencias</span>`
+      `<span class="leyenda-par">` +
+      `<i class="par-glifo"><b></b><u></u></i>` +
+      `<span>Goles, después asistencias</span></span>`
 
     const g = partidos.reduce((n, x) => n + x.goles, 0)
     const a = sumaConocida(partidos, 'asistencias')
@@ -4642,7 +4823,8 @@
     const conDato = partidos.filter((x) => typeof x.minutos === 'number')
     const tope = Math.max(1, ...conDato.map((x) => x.minutos))
 
-    caja.innerHTML = partidos
+    caja.insertAdjacentHTML('afterbegin', lineaTope(tope, 'min'))
+    caja.innerHTML += partidos
       .map((x, i) => {
         const hay = typeof x.minutos === 'number'
         const alto = hay ? Math.max(4, Math.round((x.minutos / tope) * (ALTO_GRAFICO - 4))) : 14
