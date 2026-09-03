@@ -110,7 +110,7 @@ writeFileSync(
   join(DESTINO, 'manifest.webmanifest'),
   JSON.stringify(
     {
-      name: 'StickIQ — mi temporada de césped',
+      name: 'StickIQ — tu temporada de hockey',
       short_name: 'StickIQ',
       description: 'Tu temporada de hockey césped: partidos, entrenamientos, dónde y cuándo marcas.',
       start_url: './',

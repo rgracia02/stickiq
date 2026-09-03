@@ -1795,7 +1795,7 @@
   <header class="cabecera">
     <div>
       <h1>StickIQ</h1>
-      <p>Tu temporada de césped</p>
+      <p>Tu temporada de hockey</p>
     </div>
     <button class="boton boton-icono" data-tipo="callado" id="btn-datos" type="button"
             aria-label="Ajustes y mis datos" title="Ajustes y mis datos"><span aria-hidden="true">⚙️</span></button>
@@ -3902,7 +3902,7 @@
     if (!pr) {
       caja.innerHTML =
         `<span class="que">Nada agendado.</span>` +
-        `<button type="button" id="poner-proximo">Poner lo próximo</button>`
+        `<button type="button" id="poner-proximo">Agendar</button>`
     } else {
       const faltan = daysBetweenIso(hoy(), pr.fecha)
       const cuando = faltan > 1 ? `Faltan ${faltan} días` : faltan === 1 ? 'Es mañana' : 'Es hoy'
