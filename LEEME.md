@@ -57,6 +57,22 @@ compartida públicamente porque Rodrigo la abre en un teléfono sin sesión de
 Claude; con `db` la publicación falla, y sin sesión `claude.use()` devuelve
 `null` de todas formas. El respaldo es manual, copiar y pegar desde «Datos».
 
+## Tipografías
+
+Van **dentro** del archivo, en un `<style id="fuentes">` generado por
+`scripts/fuentes.mjs` desde los `.woff2` de `fuentes/`. Antes se pedían a
+Google, así que Google veía la IP del teléfono en cada apertura: era la única
+conexión que salía a internet, en una app cuyos datos no salen del teléfono.
+Ahora son cero.
+
+Solo el subconjunto `latin` — cubre el alfabeto español, la ñ, los acentos,
+¿ ¡ « » º y el guion largo del marcador. Cuesta unos 176 KB en la página, casi
+los mismos bytes que antes bajaba de Google.
+
+El bloque va **después** del `<style>` principal: los verificadores recortan el
+CSS entre el primer `<style>` y el primer `</style>`, y ponerlo delante los
+dejaba leyendo un trozo vacío.
+
 ## Cómo está hecha
 
 Un archivo: estilos arriba, marcado en medio, código abajo. Sin librerías, sin
