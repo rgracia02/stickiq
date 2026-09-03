@@ -184,6 +184,37 @@ if (existsSync(sitio) && existsSync(sw)) {
   ok('docs/sw.js existe', false, 'corre: npm run construir')
 }
 
+// ---------- la D se puede usar sin tocar la pantalla ----------
+
+/*
+  La D de la hoja es el control principal de la app, y era una imagen.
+
+  Estaba declarada `role="img"`: sin foco, sin teclado, sin ninguna forma de
+  usarla que no fuera tocar la pantalla — y es la unica manera de registrar
+  desde donde marcaste. La de la temporada SI es una imagen y se queda como
+  esta; la diferencia es si se puede poner un gol en ella.
+
+  Se revisa la forma porque el comportamiento con teclas no se puede probar
+  aca: el navegador de este entorno no entrega teclas especiales a la pagina.
+*/
+const dibujo = js.slice(js.indexOf('function dibujoDeLaD'), js.indexOf('function puntoDelToque'))
+ok(
+  'la D donde se pone un gol es enfocable',
+  /poner[\s\S]{0,200}tabindex="0"/.test(dibujo),
+  ''
+)
+ok(
+  'y la de solo mirar sigue siendo una imagen',
+  /role="img"/.test(dibujo),
+  ''
+)
+const cableado = js.slice(js.indexOf('function cablearD'), js.indexOf('// ---------- mis datos'))
+ok(
+  'y responde a las flechas y a Enter',
+  /ArrowLeft/.test(cableado) && /'Enter'/.test(cableado),
+  ''
+)
+
 // ---------- ids que se repiten ----------
 
 /*

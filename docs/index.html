@@ -579,7 +579,18 @@
   }
   .partido[data-r="g"] { border-left-color: var(--verde); }
   .partido[data-r="p"] { border-left-color: var(--rojo); }
-  .partido[data-r="e"] { border-left-color: var(--borde); }
+  /*
+    El empate lleva barra, y se tiene que ver.
+
+    Estaba en --borde, el mismo color que la linea de abajo de la fila: 1,38:1
+    contra la tarjeta, o sea invisible. Una barra que falta no se lee como
+    «empate», se lee como dato que falta — y en una lista donde ganar es verde
+    y perder es rojo, la fila sin color parece rota.
+
+    --tinta-suave es un color de texto, asi que ya esta medido contra la
+    tarjeta en los cuatro temas.
+  */
+  .partido[data-r="e"] { border-left-color: var(--tinta-suave); }
   .partido:last-child { border-bottom: none; }
   .partido:hover { background: color-mix(in srgb, var(--cancha) 6%, transparent); }
 
@@ -2736,6 +2747,7 @@
           }">Otra</button>
         </div>
         <input id="duracion-otra" type="number" min="1" max="120" class="caja-texto"
+               aria-label="Cuántos minutos duró el partido"
                style="margin-top:0.4rem;font:inherit" placeholder="Minutos"
                value="${borrador.duracion && !DURACIONES.includes(borrador.duracion) ? borrador.duracion : ''}"
                ${borrador.duracion && !DURACIONES.includes(borrador.duracion) ? '' : 'hidden'}>
@@ -3367,6 +3379,63 @@
         hueco.y = punto.y
         redibujar()
       })
+
+      /*
+        Y lo mismo con el teclado.
+
+        Las flechas mueven una mira por la D —un metro por golpe, o un cuarto
+        con Shift— y Enter suelta el gol. La mira solo se mueve a sitios que
+        existen: si el paso siguiente cae fuera del semicirculo, no avanza, asi
+        que no hay forma de apuntar a un gol imposible.
+
+        Se mueve el circulo a mano en vez de redibujar el SVG entero: un
+        redibujado lo reemplaza y el foco se pierde en la primera flecha.
+      */
+      const svgD = document.getElementById('poner-d').querySelector('svg')
+      const mira = { x: 0, y: R_D * 0.45 }
+      svgD.addEventListener('keydown', (e) => {
+        const hueco = borrador.posiciones.find((g) => typeof g.x !== 'number')
+        if (!hueco) return
+        const paso = e.shiftKey ? 0.25 : 1
+        const mover = { ArrowLeft: [-paso, 0], ArrowRight: [paso, 0],
+                        ArrowUp: [0, -paso], ArrowDown: [0, paso] }[e.key]
+        if (mover) {
+          e.preventDefault()
+          const x = Math.round((mira.x + mover[0]) * 10) / 10
+          const y = Math.round((mira.y + mover[1]) * 10) / 10
+          if (dentroDeLaD(x, y)) {
+            mira.x = x
+            mira.y = y
+            pintarMira()
+          }
+          return
+        }
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          hueco.x = mira.x
+          hueco.y = mira.y
+          redibujar()
+          // El foco vuelve a la D: quedan mas goles por poner y perderlo aqui
+          // obliga a tabular de nuevo por toda la hoja.
+          document.getElementById('poner-d').querySelector('svg')?.focus()
+        }
+      })
+
+      function pintarMira() {
+        let c = svgD.querySelector('.punto-nuevo')
+        if (!c) {
+          c = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+          c.setAttribute('class', 'punto-nuevo')
+          c.setAttribute('r', '1.1')
+          svgD.append(c)
+        }
+        c.setAttribute('cx', mira.x)
+        c.setAttribute('cy', mira.y)
+        document.getElementById('pie-d').textContent =
+          'Flechas para mover, Enter para poner el gol.'
+      }
+
+      svgD.addEventListener('focus', pintarMira)
       document.getElementById('borrar-puntos')?.addEventListener('click', () => {
         // Se borran los sitios, no los cuartos: son dos datos distintos y
         // «empezar de nuevo» con la D no tiene por qué tirar el otro.
@@ -4371,8 +4440,17 @@
       .join('')
     return (
       `<svg class="cancha-d${poner ? ' d-poner' : ''}"` +
-      ` viewBox="${-ancho / 2} -1.2 ${ancho} ${alto + 1.2}" role="img"` +
-      ` aria-label="Semicírculo de tiro con ${puntos.length} goles marcados">` +
+      ` viewBox="${-ancho / 2} -1.2 ${ancho} ${alto + 1.2}"` +
+      /*
+        Cuando se puede poner un gol, esto NO es una imagen: es el control
+        principal de la hoja. Declarado como `img` no tenia foco, ni teclado,
+        ni forma de usarlo que no fuera tocar la pantalla — y es la unica
+        manera de registrar desde donde marcaste.
+      */
+      (poner
+        ? ` role="application" tabindex="0"` +
+          ` aria-label="Dónde marcaste. Muévete con las flechas y pon el gol con Enter.">`
+        : ` role="img" aria-label="Semicírculo de tiro con ${puntos.length} goles marcados">`) +
       // El césped dentro de la D, para que se lea como una zona y no como una raya.
       `<path class="cesped" d="M ${-(MEDIO_ARCO + R_D)} 0` +
       ` A ${R_D} ${R_D} 0 0 0 ${-MEDIO_ARCO} ${R_D}` +
