@@ -1993,6 +1993,7 @@
         <span class="cuenta-logros">oficial</span>
       </div>
       <div class="resumen" id="resumen"></div>
+      <p class="detalle" id="promedios" style="margin:0.6rem 0 0" hidden></p>
     </section>
 
     <section class="tarjeta">
@@ -2125,6 +2126,50 @@
     equipo: ''
   }
 
+  /*
+    Las tarjetas de hockey, en su orden real de gravedad y con su tope.
+
+    No son «esta o no esta»: se pueden tener dos verdes en un partido, y una
+    verde y despues una amarilla. Se cuentan.
+
+    La roja llega hasta uno porque dos rojas no existen — con la primera te
+    vas. Es la misma regla que impide guardar mas goles tuyos que los del
+    equipo: un dato que se contradice a si mismo es peor que uno ausente.
+
+    Cada toque suma, y al llegar al tope vuelve a cero. Es el mismo gesto que
+    ya usa el resto de la app —volver a tocar apaga— estirado a contar.
+  */
+  const TARJETAS = [
+    ['verde', 'Verde', 3],
+    ['amarilla', 'Amarilla', 3],
+    ['roja', 'Roja', 1]
+  ]
+
+  // Se pone si `leer` fallo habiendo datos escritos. Bloquea `guardar`.
+  let lecturaFallida = false
+
+  const SIN_TARJETAS = { verde: 0, amarilla: 0, roja: 0 }
+
+  /*
+    Las guardadas antes eran una lista de nombres: ['verde', 'amarilla'].
+    Se convierten al leer, cada vez, igual que el resto de las formas viejas.
+  */
+  function cuentaTarjetas(v) {
+    if (Array.isArray(v)) {
+      const n = { ...SIN_TARJETAS }
+      for (const t of v) if (t in n) n[t]++
+      return n
+    }
+    if (v && typeof v === 'object') {
+      return Object.fromEntries(
+        TARJETAS.map(([id, , tope]) => [id, Math.min(tope, Math.max(0, Number(v[id]) || 0))])
+      )
+    }
+    return { ...SIN_TARJETAS }
+  }
+
+  const hayTarjetas = (t) => TARJETAS.some(([id]) => (t?.[id] ?? 0) > 0)
+
   let estado = leer()
   let borrador = null
 
@@ -2174,13 +2219,38 @@
 
   // ---------- guardar ----------
 
+  /*
+    Leer, distinguiendo TRES fallos que no son el mismo.
+
+    1. No se puede acceder a localStorage —ventana privada, datos del sitio
+       bloqueados—. No hay nada que perder: se sigue con un estado vacio.
+    2. Hay texto pero no es JSON. Ya estaba perdido antes de llegar nosotros,
+       asi que se sigue: bloquear la escritura solo dejaria la app inservible
+       ademas de vacia.
+    3. Es JSON valido y REVENTAMOS interpretandolo. Ese es un fallo NUESTRO
+       sobre datos que estan intactos, y ahi no se escribe nada encima.
+
+    El tres casi le cuesta la temporada: puse una constante despues de la linea
+    que la usa, esto reventó, devolvio vacio, y la app guardo ese vacio sobre
+    sus cinco partidos en el primer arranque. En silencio.
+  */
   function leer() {
-    // Cada lectura va en try: en una ventana privada o con los datos del sitio
-    // bloqueados, localStorage no devuelve vacío, lanza.
+    let crudo = null
     try {
-      const crudo = localStorage.getItem(CLAVE)
-      if (!crudo) return { ...ESTADO_VACIO }
-      const d = JSON.parse(crudo)
+      crudo = localStorage.getItem(CLAVE)
+    } catch {
+      return { ...ESTADO_VACIO }
+    }
+    if (!crudo) return { ...ESTADO_VACIO }
+
+    let d
+    try {
+      d = JSON.parse(crudo)
+    } catch {
+      return { ...ESTADO_VACIO }
+    }
+
+    try {
       return {
         meta: Number(d.meta) || 3,
         // Los entrenamientos viejos eran solo una fecha; los nuevos son un
@@ -2254,6 +2324,23 @@
         equipo: typeof d.equipo === 'string' ? d.equipo : ''
       }
     } catch {
+      /*
+        Caso tres: el dato estaba bien y el roto soy yo.
+
+        `lecturaFallida` bloquea `guardar` hasta que se recargue. Se pierde lo
+        que anote en esta sesion, que es una molestia; lo otro era perder la
+        temporada entera.
+
+        El aviso va en su propio try: si el que avisa tambien falla, lo que NO
+        puede pasar es que se caiga la proteccion con el.
+      */
+      lecturaFallida = true
+      try {
+        avisoEspacio(
+          'No pude leer tus datos guardados, así que no voy a escribir encima de ellos. ' +
+            'Cierra y vuelve a abrir. Si sigue igual, avísame antes de anotar nada.'
+        )
+      } catch {}
       return { ...ESTADO_VACIO }
     }
   }
@@ -2266,46 +2353,6 @@
     dejarlo seria seguir afirmando algo que salio de una premisa falsa. Los de 11
     no se tocan, porque ahi sesenta si es el largo real.
   */
-  /*
-    Las tarjetas de hockey, en su orden real de gravedad y con su tope.
-
-    No son «esta o no esta»: se pueden tener dos verdes en un partido, y una
-    verde y despues una amarilla. Se cuentan.
-
-    La roja llega hasta uno porque dos rojas no existen — con la primera te
-    vas. Es la misma regla que impide guardar mas goles tuyos que los del
-    equipo: un dato que se contradice a si mismo es peor que uno ausente.
-
-    Cada toque suma, y al llegar al tope vuelve a cero. Es el mismo gesto que
-    ya usa el resto de la app —volver a tocar apaga— estirado a contar.
-  */
-  const TARJETAS = [
-    ['verde', 'Verde', 3],
-    ['amarilla', 'Amarilla', 3],
-    ['roja', 'Roja', 1]
-  ]
-
-  const SIN_TARJETAS = { verde: 0, amarilla: 0, roja: 0 }
-
-  /*
-    Las guardadas antes eran una lista de nombres: ['verde', 'amarilla'].
-    Se convierten al leer, cada vez, igual que el resto de las formas viejas.
-  */
-  function cuentaTarjetas(v) {
-    if (Array.isArray(v)) {
-      const n = { ...SIN_TARJETAS }
-      for (const t of v) if (t in n) n[t]++
-      return n
-    }
-    if (v && typeof v === 'object') {
-      return Object.fromEntries(
-        TARJETAS.map(([id, , tope]) => [id, Math.min(tope, Math.max(0, Number(v[id]) || 0))])
-      )
-    }
-    return { ...SIN_TARJETAS }
-  }
-
-  const hayTarjetas = (t) => TARJETAS.some(([id]) => (t?.[id] ?? 0) > 0)
 
   /*
     Los minutos solo valen si hay una duracion anotada.
@@ -2326,6 +2373,9 @@
   }
 
   function guardar() {
+    // Si la lectura fallo con datos presentes, no se escribe: lo que hay en
+    // disco vale mas que lo que tenemos en memoria, que es un estado vacio.
+    if (lecturaFallida) return false
     try {
       localStorage.setItem(CLAVE, JSON.stringify(estado))
       avisoEspacio(null)
@@ -2423,6 +2473,44 @@
   }
 
   // ---------- temporada ----------
+
+  /*
+    Los promedios por partido.
+
+    Y aca esta la trampa: las asistencias y los minutos son `null` cuando no se
+    saben. Dividir la suma entre TODOS los partidos daria un promedio mas bajo
+    de lo real —los partidos donde no se anoto contarian como cero— y el numero
+    saldria mal justo para quien lleva media temporada anotada de la forma
+    vieja, que es su caso.
+
+    Asi que cada promedio se divide entre los partidos donde ESE dato existe.
+    Los goles se piden siempre, asi que ahi van todos.
+
+    Bajo tres partidos no se muestra nada: un promedio de dos partidos no es un
+    promedio, es el ultimo partido con decimales.
+  */
+  const MINIMO_PARA_PROMEDIAR = 3
+
+  function promedios() {
+    const partidos = estado.dias.flatMap((d) => d.partidos)
+    if (partidos.length < MINIMO_PARA_PROMEDIAR) return null
+
+    const media = (campo) => {
+      const conDato = partidos.filter((x) => typeof x[campo] === 'number')
+      if (!conDato.length) return null
+      const suma = conDato.reduce((n, x) => n + x[campo], 0)
+      return { valor: suma / conDato.length, sobre: conDato.length }
+    }
+
+    return {
+      partidos: partidos.length,
+      goles: media('goles'),
+      asistencias: media('asistencias')
+    }
+  }
+
+  // Con coma, que es como se escriben los decimales acá.
+  const conComa = (n, decimales = 2) => n.toFixed(decimales).replace('.', ',')
 
   function totales() {
     const partidos = estado.dias.flatMap((d) => d.partidos)
@@ -2544,6 +2632,31 @@
     const t = totales()
     // El tercer elemento es la nota chica: lo del entrenamiento, que existe pero
     // no compite con la cifra oficial.
+    /*
+      Los promedios, en una linea y no en fichas nuevas.
+
+      «En total» ya son seis cifras y meter dos mas lo convierte en una tabla
+      que nadie lee. Una frase se lee entera de un vistazo, y ademas puede
+      decir sobre cuantos partidos esta calculada — que en las asistencias
+      importa, porque los partidos viejos no las traen.
+    */
+    const pr = promedios()
+    const cajaPr = document.getElementById('promedios')
+    cajaPr.hidden = !pr
+    if (pr) {
+      const trozos = []
+      if (pr.goles) trozos.push(`<b>${conComa(pr.goles.valor)}</b> goles`)
+      if (pr.asistencias) {
+        const distinto = pr.asistencias.sobre !== pr.partidos
+        trozos.push(
+          `<b>${conComa(pr.asistencias.valor)}</b> asistencias` +
+            (distinto ? ` (sobre ${pr.asistencias.sobre} de ${pr.partidos})` : '')
+        )
+      }
+      cajaPr.innerHTML = trozos.length ? `Por partido: ${trozos.join(' y ')}.` : ''
+      cajaPr.hidden = trozos.length === 0
+    }
+
     document.getElementById('resumen').innerHTML = [
       ['Entrenos', t.entrenamientos, '', ''],
       ['Partidos', t.partidos, '', ''],

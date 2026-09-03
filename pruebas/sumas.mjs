@@ -12,11 +12,11 @@ const fuente =
   'export let estado = { meta: 3, entrenamientos: [], dias: [] }\n' +
   'export const ponerEstado = (e) => { estado = e }\n' +
   trozo('function todosLosPartidos', '// ---------- logros') +
-  trozo('  function totales()', '  const resultado =') +
+  trozo('  const MINIMO_PARA_PROMEDIAR', '  const resultado =') +
   // `totales` cuenta los ganados con `resultado`, que ahora incluye los penales.
   trozo('  const resultado = (p) =>', '  // ---------- pintar ----------') +
   trozo('  const sumaConocida =', '  function pintarGrafico') +
-  '\nexport { totales, sumaConocida, todosLosPartidos }'
+  '\nexport { totales, sumaConocida, todosLosPartidos, promedios, conComa }'
 
 const M = await cargar(fuente)
 
@@ -79,6 +79,43 @@ console.log('\n- un entrenamiento sin detalles no aporta ceros falsos -')
 M.ponerEstado({ meta: 3, entrenamientos: [{ fecha: '2026-09-01' }], dias: [] })
 eq('goles en cero, sin reventar', M.totales().goles, 0)
 eq('asistencias en cero', M.totales().asistencias, 0)
+
+console.log('\n- los promedios se dividen entre lo que existe -')
+/*
+  La misma trampa de siempre, en su forma mas facil de colar: dividir la suma
+  entre TODOS los partidos. Los que no traen asistencias contarian como cero y
+  el promedio saldria mas bajo que el real — justo para quien lleva media
+  temporada anotada con la forma vieja.
+*/
+const p = (goles, asist) => ({ rival: 'X', nuestros: 1, suyos: 0, goles, asistencias: asist })
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: [
+  { fecha: '2026-03-07', torneo: 'Liga', partidos: [p(2, 1), p(0, null), p(4, 3), p(2, null)] }
+] })
+const r = M.promedios()
+eq('los goles se dividen entre los cuatro', r.goles, { valor: 2, sobre: 4 })
+eq('las asistencias, solo entre los dos que las traen', r.asistencias, { valor: 2, sobre: 2 })
+eq('y se dice cuantos partidos hay en total', r.partidos, 4)
+
+console.log('\n- un promedio de dos partidos no es un promedio -')
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: [
+  { fecha: '2026-03-07', torneo: 'Liga', partidos: [p(2, 1), p(0, 0)] }
+] })
+eq('con dos partidos no se muestra nada', M.promedios(), null)
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: [
+  { fecha: '2026-03-07', torneo: 'Liga', partidos: [p(2, 1), p(0, 0), p(1, 1)] }
+] })
+eq('con tres si', M.promedios()?.partidos, 3)
+
+console.log('\n- y si NADIE trae el dato, no se inventa un cero -')
+M.ponerEstado({ meta: 3, entrenamientos: [], dias: [
+  { fecha: '2026-03-07', torneo: 'Liga', partidos: [p(2, null), p(0, null), p(1, null)] }
+] })
+eq('sin ninguna asistencia anotada, no hay promedio', M.promedios().asistencias, null)
+eq('pero los goles siguen', M.promedios().goles, { valor: 1, sobre: 3 })
+
+console.log('\n- los decimales van con coma -')
+eq('cero coma setenta y cinco', M.conComa(0.75), '0,75')
+eq('y se redondea a dos', M.conComa(1 / 3), '0,33')
 
 console.log(`\n${ok} ok, ${mal} fallos`)
 process.exit(mal ? 1 : 0)

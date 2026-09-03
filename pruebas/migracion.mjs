@@ -14,6 +14,13 @@ const fuente =
   'const localStorage = { getItem: () => globalThis.__crudo, setItem: () => {} }\n' +
   "const CLAVE = 'la-d-v1'\n" +
   js.slice(js.indexOf('const ESTADO_VACIO'), js.indexOf('function guardar')) +
+  // El que avisa vive fuera de este trozo. Se le da uno de mentira que además
+  // registra, para comprobar que avisa y no solo que no escribe.
+  '\nglobalThis.__aviso = null' +
+  '\nfunction avisoEspacio(t) { globalThis.__aviso = t }' +
+  // La bandera es interna a propósito; se expone por una función para poder
+  // comprobar el comportamiento sin abrirla al resto de la app.
+  '\nexport const bloqueado = () => lecturaFallida' +
   '\nexport { leer, ESTADO_VACIO }'
 
 const M = await cargar(fuente)
@@ -151,6 +158,33 @@ eq('dos iguales cuentan dos', ts[1], { verde: 2, amarilla: 0, roja: 0 })
 eq('sin tarjetas, todo en cero', ts[2], { verde: 0, amarilla: 0, roja: 0 })
 // Dos rojas no existen: con la primera te vas.
 eq('una cuenta imposible se recorta al tope', ts[3], { verde: 2, amarilla: 0, roja: 1 })
+
+console.log('\n- un fallo MIO no puede borrar la temporada -')
+/*
+  Esto casi pasa de verdad. Puse una constante despues de la linea que la usa,
+  `leer` reventó por eso, devolvio un estado vacio, y lo primero que hizo la
+  app fue guardar ese vacio ENCIMA de cinco partidos. En silencio, en el primer
+  arranque, sin un error en pantalla.
+
+  Los tres fallos no son el mismo y no se tratan igual:
+  ilegible ya estaba perdido; no-supe-interpretarlo es culpa mia sobre datos
+  intactos.
+*/
+const conTemporada = JSON.stringify({ meta: 3, entrenamientos: [], dias: [
+  { fecha: '2026-03-07', torneo: 'Liga', partidos: [{ rival: 'A', nuestros: 1, suyos: 0, goles: 1 }] }
+] })
+
+globalThis.__crudo = conTemporada
+M.leer()
+si('leyendo bien, no se bloquea nada', M.bloqueado() === false)
+
+// Un `dias` que no es lista pero tampoco rompe el JSON: mapearlo revienta.
+globalThis.__aviso = null
+globalThis.__crudo = JSON.stringify({ meta: 3, entrenamientos: [], dias: [null] })
+const roto = M.leer()
+eq('devuelve vacio, como antes', roto.dias.length, 0)
+si('pero bloquea la escritura', M.bloqueado() === true)
+si('y lo dice en pantalla', String(globalThis.__aviso ?? '').includes('no voy a escribir encima'))
 
 console.log(`\n${ok} ok, ${mal} fallos`)
 process.exit(mal ? 1 : 0)

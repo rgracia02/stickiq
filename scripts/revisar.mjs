@@ -103,7 +103,7 @@ const CLAVE = [
   'abrirDetalleEntreno', 'abrirDatos', 'abrirResumen', 'abrirProximo',
   'restaurarDesde', 'irA', 'celebrar', 'cablearHoja', 'cablearD',
   'alternarDia', 'mostrarDia', 'normalizarGoles', 'pintarCuartos', 'todosLosGolesDetallados',
-  'porRival', 'pintarRivales', 'unReparto', 'resultado', 'seFueAPenales', 'claveRival', 'rivalesConocidos', 'loQueViene', 'contarLogro', 'duracionDe', 'proporcionDe', 'aDatoLimpio',
+  'promedios', 'conComa', 'porRival', 'pintarRivales', 'unReparto', 'resultado', 'seFueAPenales', 'claveRival', 'rivalesConocidos', 'loQueViene', 'contarLogro', 'duracionDe', 'proporcionDe', 'aDatoLimpio',
   'periodosDe', 'estructuraDe', 'comoSeJuega', 'recortarPeriodos', 'pintarDuracion', 'sugerirComoSeJuega', 'aplicarTema', 'temaDe'
 ]
 
