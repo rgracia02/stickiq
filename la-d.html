@@ -3274,10 +3274,24 @@
         mapa de temporada no existe y habia un solo SVG, asi que probandola con
         datos vacios funcionaba siempre.
       */
+      // La mira: donde caeria el gol si lo pones sin tocar la pantalla.
+      const mira = { x: 0, y: R_D * 0.45 }
+
       document.getElementById('poner-d').querySelector('svg').addEventListener('click', (e) => {
         const hueco = borrador.posiciones.find((g) => typeof g.x !== 'number')
         if (!hueco) return
-        const punto = puntoDelToque(e.currentTarget, e)
+        /*
+          Un click SIN coordenadas usa la mira, no el centro del elemento.
+
+          Es lo que produce un doble toque de VoiceOver, y tambien Enter sobre
+          algo con `role="button"`. Antes esos clicks llegaban con clientX y
+          clientY en cero, la cuenta los situaba en la esquina de arriba y la
+          app contestaba «eso esta fuera de la D»: con el lector de pantalla
+          encendido, poner un gol era imposible y el mensaje no explicaba nada.
+
+          `detail` es cero justo en esos casos y no en un toque de verdad.
+        */
+        const punto = e.detail === 0 ? { ...mira } : puntoDelToque(e.currentTarget, e)
         // Fuera de la D no se acepta: un gol de hockey no existe fuera de ahí,
         // y aceptarlo sería guardar algo imposible.
         if (!dentroDeLaD(punto.x, punto.y)) {
@@ -3301,7 +3315,6 @@
         redibujado lo reemplaza y el foco se pierde en la primera flecha.
       */
       const svgD = document.getElementById('poner-d').querySelector('svg')
-      const mira = { x: 0, y: R_D * 0.45 }
       svgD.addEventListener('keydown', (e) => {
         const hueco = borrador.posiciones.find((g) => typeof g.x !== 'number')
         if (!hueco) return
@@ -4357,8 +4370,8 @@
         manera de registrar desde donde marcaste.
       */
       (poner
-        ? ` role="application" tabindex="0"` +
-          ` aria-label="Dónde marcaste. Muévete con las flechas y pon el gol con Enter.">`
+        ? ` role="button" tabindex="0"` +
+          ` aria-label="Dónde marcaste. Tócala, o muévete con las flechas y pon el gol con Enter.">`
         : ` role="img" aria-label="Semicírculo de tiro con ${puntos.length} goles marcados">`) +
       // El césped dentro de la D, para que se lea como una zona y no como una raya.
       `<path class="cesped" d="M ${-(MEDIO_ARCO + R_D)} 0` +
