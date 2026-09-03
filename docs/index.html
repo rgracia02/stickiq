@@ -3718,15 +3718,31 @@
         }
       }
 
-      try {
-        const url = URL.createObjectURL(archivo)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = nombre
-        a.click()
-        URL.revokeObjectURL(url)
-        return hecho('Descargada — búscala en Archivos')
-      } catch {}
+      /*
+        La descarga SOLO en la pagina propia, nunca dentro de un marco.
+
+        En el visor de Artifacts las descargas que inicia la pagina estan
+        bloqueadas, y no fallan: no hacen nada. El `a.click()` devuelve sin
+        error, asi que la app habria dicho «Descargada, buscala en Archivos» y
+        habria anotado la copia como hecha — apagando de paso el recordatorio.
+        Una copia inventada es peor que ninguna: la que no existe al menos
+        sigue avisando.
+
+        Estar dentro de un marco es justo la diferencia entre las dos
+        direcciones donde vive la app, asi que sirve para decidir.
+      */
+      const enUnMarco = window.top !== window.self
+      if (!enUnMarco) {
+        try {
+          const url = URL.createObjectURL(archivo)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = nombre
+          a.click()
+          URL.revokeObjectURL(url)
+          return hecho('Descargada — búscala en Archivos')
+        } catch {}
+      }
 
       try {
         await navigator.clipboard.writeText(copia)
