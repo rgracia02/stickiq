@@ -2336,7 +2336,7 @@
             // para la que sirve el dato.
             donde: null,
             // Sin tarjetas es lo normal, y por eso el vacio significa cero.
-            tarjetas: [],
+            tarjetas: { ...SIN_TARJETAS },
             // Los partidos guardados antes de que existiera el formato se leen
             // como de 11. No es un adivinar: cuando se anotaron, las fichas de
             // periodo solo ofrecian cuatro cuartos, asi que eso es lo que
@@ -2345,7 +2345,8 @@
             // Los guardados antes ofrecian cuatro cuartos en los de 11 y dos
             // tiempos en los de 7: eso es lo que significaban sus periodos.
             periodos: x.formato === 7 ? 2 : 4,
-            ...x
+            ...x,
+            tarjetas: cuentaTarjetas(x.tarjetas)
           }))
         })),
         // Los campos nuevos se rellenan al leer, no al escribir: una app ya
@@ -2393,6 +2394,47 @@
     dejarlo seria seguir afirmando algo que salio de una premisa falsa. Los de 11
     no se tocan, porque ahi sesenta si es el largo real.
   */
+  /*
+    Las tarjetas de hockey, en su orden real de gravedad y con su tope.
+
+    No son «esta o no esta»: se pueden tener dos verdes en un partido, y una
+    verde y despues una amarilla. Se cuentan.
+
+    La roja llega hasta uno porque dos rojas no existen — con la primera te
+    vas. Es la misma regla que impide guardar mas goles tuyos que los del
+    equipo: un dato que se contradice a si mismo es peor que uno ausente.
+
+    Cada toque suma, y al llegar al tope vuelve a cero. Es el mismo gesto que
+    ya usa el resto de la app —volver a tocar apaga— estirado a contar.
+  */
+  const TARJETAS = [
+    ['verde', 'Verde', 3],
+    ['amarilla', 'Amarilla', 3],
+    ['roja', 'Roja', 1]
+  ]
+
+  const SIN_TARJETAS = { verde: 0, amarilla: 0, roja: 0 }
+
+  /*
+    Las guardadas antes eran una lista de nombres: ['verde', 'amarilla'].
+    Se convierten al leer, cada vez, igual que el resto de las formas viejas.
+  */
+  function cuentaTarjetas(v) {
+    if (Array.isArray(v)) {
+      const n = { ...SIN_TARJETAS }
+      for (const t of v) if (t in n) n[t]++
+      return n
+    }
+    if (v && typeof v === 'object') {
+      return Object.fromEntries(
+        TARJETAS.map(([id, , tope]) => [id, Math.min(tope, Math.max(0, Number(v[id]) || 0))])
+      )
+    }
+    return { ...SIN_TARJETAS }
+  }
+
+  const hayTarjetas = (t) => TARJETAS.some(([id]) => (t?.[id] ?? 0) > 0)
+
   /*
     Los minutos solo valen si hay una duracion anotada.
 
@@ -2693,12 +2735,15 @@
               ` aria-label="Editar ${escapar(p.rival)}">` +
               `<span class="rival">${escapar(p.rival)}</span>` +
               `<span class="marcador" data-r="${resultado(p)}">${p.nuestros}–${p.suyos}` +
-              (p.tarjetas ?? [])
-                .map(
-                  (t) =>
-                    `<span class="marca-tarjeta" data-t="${t}" title="Tarjeta ${t}">` +
-                    `${t[0].toUpperCase()}</span>`
-                )
+              TARJETAS.filter(([id]) => (p.tarjetas?.[id] ?? 0) > 0)
+                .map(([id, texto]) => {
+                  const n = p.tarjetas[id]
+                  return (
+                    `<span class="marca-tarjeta" data-t="${id}"` +
+                    ` title="${n} ${n === 1 ? texto.toLowerCase() : texto.toLowerCase() + 's'}">` +
+                    `${texto[0]}${n > 1 ? n : ''}</span>`
+                  )
+                })
                 .join('') +
               (seFueAPenales(p) ? `<span class="marca-penales">p</span>` : '') +
               ((p.formato ?? 11) === 7 ? `<span class="formato-7">7</span>` : '') +
@@ -2759,7 +2804,7 @@
       */
       eligio: { periodos: false, duracion: false },
       donde: null,
-      tarjetas: [],
+      tarjetas: { ...SIN_TARJETAS },
       notas: '',
       penales: null,
       fecha: hoy(),
@@ -2810,7 +2855,7 @@
       <div class="campo">
         <label class="rotulo">Dónde <span style="text-transform:none;font-weight:400">(opcional)</span></label>
         <div class="fichas" id="donde">
-          ${[['local', 'De local'], ['visita', 'De visita']]
+          ${[['local', 'Local'], ['visita', 'Visita']]
             .map(
               ([id, texto]) =>
                 `<button type="button" data-donde="${id}" aria-pressed="${
@@ -2828,7 +2873,7 @@
         </div>
         <span class="guion">–</span>
         <div class="campo">
-          <span class="mini-rotulo">Ellos</span>
+          <span class="mini-rotulo" id="rotulo-rival">${escapar(borrador.rival || 'Ellos')}</span>
           ${contador('suyos', borrador.suyos)}
         </div>
       </div>
@@ -2943,12 +2988,14 @@
       <div class="campo">
         <label class="rotulo">Tarjetas <span style="text-transform:none;font-weight:400">(si te sacaron alguna)</span></label>
         <div class="fichas" id="tarjetas">
-          ${TARJETAS.map(
-            ([id, texto]) =>
-              `<button type="button" class="tarjeta-${id}" data-t="${id}" aria-pressed="${
-                (borrador.tarjetas ?? []).includes(id)
-              }">${texto}</button>`
-          ).join('')}
+          ${TARJETAS.map(([id, texto]) => {
+            const n = borrador.tarjetas?.[id] ?? 0
+            return (
+              `<button type="button" class="tarjeta-${id}" data-t="${id}"` +
+              ` aria-pressed="${n > 0}" aria-label="${texto}: ${n}">` +
+              `${texto}${n > 1 ? ` ×${n}` : ''}</button>`
+            )
+          }).join('')}
         </div>
       </div>
 
@@ -3111,6 +3158,16 @@
     document.getElementById('rival')?.addEventListener('input', (e) => {
       // Se limpia en cuanto escribe algo. Dejarlo puesto sobre un campo ya
       // lleno seria un error que miente.
+      /*
+        El marcador sigue al rival mientras escribe.
+
+        Con el nombre del equipo a la izquierda, un «Ellos» generico a la
+        derecha se lee como un hueco. Y ver «Old Foxes 2 - 1 TRAF» mientras lo
+        llenas es la confirmacion de que estas anotando el partido que crees.
+      */
+      const rotulo = document.getElementById('rotulo-rival')
+      if (rotulo) rotulo.textContent = e.target.value.trim() || 'Ellos'
+
       if (!e.target.value.trim()) return
       e.target.removeAttribute('aria-invalid')
       const err = document.getElementById('error-rival')
@@ -3131,15 +3188,14 @@
     document.getElementById('tarjetas')?.addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
-      const t = b.dataset.t
-      const puestas = new Set(borrador.tarjetas ?? [])
-      puestas.has(t) ? puestas.delete(t) : puestas.add(t)
-      // Se guardan en el orden de la tabla, no en el que las toco: asi dos
-      // partidos con las mismas tarjetas se guardan igual.
-      borrador.tarjetas = TARJETAS.map(([id]) => id).filter((id) => puestas.has(id))
-      document.querySelectorAll('#tarjetas button').forEach((x) => {
-        x.setAttribute('aria-pressed', String(borrador.tarjetas.includes(x.dataset.t)))
-      })
+      const [, texto, tope] = TARJETAS.find(([id]) => id === b.dataset.t)
+      // Suma, y al pasarse del tope vuelve a cero: sin eso no habria forma de
+      // corregirse despues de un toque de mas.
+      const n = ((borrador.tarjetas[b.dataset.t] ?? 0) + 1) % (tope + 1)
+      borrador.tarjetas[b.dataset.t] = n
+      b.textContent = texto + (n > 1 ? ` ×${n}` : '')
+      b.setAttribute('aria-pressed', String(n > 0))
+      b.setAttribute('aria-label', `${texto}: ${n}`)
     })
 
     document.getElementById('notas')?.addEventListener('input', (e) => {
@@ -3347,7 +3403,7 @@
       formato: borrador.formato ?? 11,
       periodos: periodosDe(borrador),
       donde: borrador.donde ?? null,
-      tarjetas: borrador.tarjetas ?? [],
+      tarjetas: { ...borrador.tarjetas },
       // Vacio se guarda como vacio, no como null: son dos formas de «nada» y
       // una sola basta.
       notas: (borrador.notas ?? '').trim(),
@@ -4103,7 +4159,7 @@
     for (const x of d.partidos ?? []) {
       const mios = x.goles ? ` (${x.goles} tuyo${x.goles === 1 ? '' : 's'})` : ''
       const como = x.sensacion ? `, ${x.sensacion}/5` : ''
-      const donde = x.donde ? ` (de ${x.donde})` : ''
+      const donde = x.donde ? ` (${x.donde})` : ''
       partes.push(`${escapar(x.rival)}${donde} ${x.nuestros}–${x.suyos}${mios}${como}`)
       // Las notas van en su propia linea: son una frase, no un dato mas de la
       // fila, y apretadas al final no las lee nadie.
@@ -4703,18 +4759,6 @@
   */
   const FORMATOS = { 11: 'De 11', 7: 'De 7' }
 
-  /*
-    Las tarjetas de hockey, en su orden real de gravedad.
-
-    Se pueden tener varias en un partido —una verde y luego una amarilla— asi
-    que son interruptores, no una eleccion entre tres. Y ninguna tocada
-    significa ninguna tarjeta, que es lo normal: cero toques en el caso comun.
-  */
-  const TARJETAS = [
-    ['verde', 'Verde'],
-    ['amarilla', 'Amarilla'],
-    ['roja', 'Roja']
-  ]
 
   const ESTRUCTURAS = {
     2: { nombre: '2 tiempos', como: (n) => `${n}º t.` },

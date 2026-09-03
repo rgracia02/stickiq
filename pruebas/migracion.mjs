@@ -131,5 +131,26 @@ eq('sin nada elegido, sigue al telefono', M.leer().tema, 'auto')
 globalThis.__crudo = JSON.stringify({ meta: 3, entrenamientos: [], dias: [], tema: 'dark' })
 eq('y el oscuro tambien', M.leer().tema, 'dark')
 
+console.log('\n- las tarjetas pasaron de lista a cuenta -')
+/*
+  Primero fueron interruptores y se guardaban como ['verde','amarilla'].
+  Despues resulto que se pueden tener dos verdes en un partido, asi que ahora
+  se cuentan. Los partidos ya anotados con la forma vieja tienen que entrar.
+*/
+globalThis.__crudo = JSON.stringify({ meta: 3, entrenamientos: [], dias: [
+  { fecha: '2026-03-07', torneo: 'Liga', partidos: [
+    { rival: 'A', nuestros: 1, suyos: 0, goles: 0, tarjetas: ['verde', 'amarilla'] },
+    { rival: 'B', nuestros: 1, suyos: 0, goles: 0, tarjetas: ['verde', 'verde'] },
+    { rival: 'C', nuestros: 1, suyos: 0, goles: 0 },
+    { rival: 'D', nuestros: 1, suyos: 0, goles: 0, tarjetas: { verde: 2, roja: 5 } }
+  ] }
+] })
+const ts = M.leer().dias[0].partidos.map((x) => x.tarjetas)
+eq('la lista vieja se cuenta', ts[0], { verde: 1, amarilla: 1, roja: 0 })
+eq('dos iguales cuentan dos', ts[1], { verde: 2, amarilla: 0, roja: 0 })
+eq('sin tarjetas, todo en cero', ts[2], { verde: 0, amarilla: 0, roja: 0 })
+// Dos rojas no existen: con la primera te vas.
+eq('una cuenta imposible se recorta al tope', ts[3], { verde: 2, amarilla: 0, roja: 1 })
+
 console.log(`\n${ok} ok, ${mal} fallos`)
 process.exit(mal ? 1 : 0)
