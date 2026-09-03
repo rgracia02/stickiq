@@ -745,6 +745,7 @@
     una temporada y no como todo lo que hay.
   */
   .columna {
+    position: relative;
     flex: 1 1 auto;
     max-width: 26px;
     min-width: 0;
@@ -931,46 +932,27 @@
     La pareja: dos barras finas por partido, con el hueco de superficie de 2 px
     entre ellas y uno mayor entre parejas, para que se lean como parejas.
   */
-  .columna.par {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    max-width: 22px;
-  }
-  .mitad {
-    flex: 1;
-    border-radius: 3px 3px 0 0;
-    min-width: 0;
-  }
-  .leyenda-par { display: flex; align-items: center; gap: 0.4rem; }
   /*
-    Gana a `.leyenda i`, que fija 11 x 11 para los cuadritos de siempre. Sin
-    esto el dibujito de la pareja salia apilado en un cuadrado de 11 px, que es
-    justo lo contrario de lo que tiene que enseñar.
+    El punto de las asistencias: 10 px, con un aro del color de la tarjeta para
+    que se despegue de la barra cuando cae encima de ella.
   */
-  .leyenda i.par-glifo {
-    display: inline-flex;
-    align-items: flex-end;
-    gap: 2px;
-    width: auto;
-    height: 14px;
-    margin-right: 0;
-    border-radius: 0;
+  .punto-asist {
+    position: absolute;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+    border-radius: 50%;
+    background: var(--marca-partido);
+    box-shadow: 0 0 0 2px var(--tarjeta);
   }
-  .par-glifo b,
-  .par-glifo u {
-    display: block;
-    width: 5px;
-    border-radius: 2px 2px 0 0;
+  .leyenda i.punto-leyenda {
+    border-radius: 50%;
+    background: var(--marca-partido);
   }
-  .par-glifo b { height: 14px; background: var(--marca-partido); }
-  .par-glifo u { height: 8px; background: var(--marca-asist); }
-
-  .mitad.gol { background: var(--marca-partido); }
-  .mitad.asist { background: var(--marca-asist); }
   /* Cero no es una barra de altura cero: es una marca minima, para que se vea
      que el partido existe y que ahi hubo un cero. */
-  .mitad[data-cero="si"] { background: var(--celda-vacia); }
+  .barra[data-cero="si"] { background: var(--celda-vacia); }
 
   .apilada { display: flex; flex-direction: column-reverse; gap: 2px; width: 100%; }
   .apilada span { display: block; border-radius: 2px; }
@@ -4762,55 +4744,53 @@
     `<span>${tope}${unidad ? ' ' + unidad : ''}</span></div>`
 
   /*
-    Goles y asistencias, en PAREJA y no apiladas.
+    Goles en barra, asistencias en punto. Dos MARCAS, no dos colores.
 
-    Apiladas, las dos partes solo se distinguian por el tono, y ahi no hay
-    salida: separar mas los dos pasos del azul hace que el claro desaparezca
-    contra la tarjeta, y acercarlos hace que se confundan entre si. Lo medi —
-    el paso que aguanta la tarjeta queda a 1,36 del otro, o sea iguales.
+    Probe tres caminos antes de este y los tres fallaron, cada uno medido:
 
-    Dos identidades de color tampoco: el validador reprueba azul contra morado
-    (4,1 bajo deuteranopia), y los tonos que si pasan ya significan otra cosa
-    en esta app — el ambar es entrenamiento, el verde ganado, el rojo perdido.
+    · Apiladas en dos tonos del mismo azul: separar los pasos hace que el claro
+      desaparezca contra la tarjeta, y acercarlos los vuelve indistinguibles.
+      El paso que aguanta la tarjeta queda a 1,36 del otro. Iguales.
+    · Dos identidades de color: el validador reprueba azul contra morado —4,1
+      bajo deuteranopia— y los tonos que si pasan ya significan otra cosa aqui.
+      El ambar es entrenamiento, y son celdas grandes justo debajo. El carmesi
+      queda a 1,28 del rojo de «perdido»: a la vista, el mismo color.
+    · En pareja, fiando la diferencia a la posicion. Lo probo el y dijo que los
+      colores seguian pareciendose. Tenia razon: la posicion ayuda, pero si los
+      dos tonos son casi iguales el ojo no descansa.
 
-    Asi que la diferencia la lleva la POSICION: izquierda goles, derecha
-    asistencias, siempre en el mismo orden. La posicion es un canal mas fuerte
-    que el color y no depende de distinguir tonos. El tono queda de refuerzo.
+    Asi que la diferencia la lleva la FORMA. Una barra y un punto no se
+    confunden aunque sean del mismo color, aunque se imprima en blanco y negro
+    y aunque no distingas ningun tono. Y ademas dice lo correcto: los goles son
+    la medida principal y las asistencias van encima, en la misma escala.
   */
   function graficoAporte(caja, leyenda, pie, partidos) {
     const asistDe = (x) => x.asistencias ?? 0
     const tope = Math.max(1, ...partidos.map((x) => Math.max(x.goles, asistDe(x))))
-    const alto = (n) => (n === 0 ? 3 : Math.max(5, Math.round((n / tope) * (ALTO_GRAFICO - 6))))
+    const enPx = (n) => Math.round((n / tope) * (ALTO_GRAFICO - 14))
 
     caja.insertAdjacentHTML('afterbegin', lineaTope(tope, ''))
     caja.innerHTML += partidos
       .map((x, i) => {
         const a = asistDe(x)
+        const alto = x.goles === 0 ? 3 : Math.max(5, enPx(x.goles))
         return (
-          `<button class="columna par" type="button" data-i="${i}" aria-pressed="false"` +
+          `<button class="columna" type="button" data-i="${i}" aria-pressed="false"` +
           ` aria-label="${escapar(x.rival)}: ${cuantos(x.goles, 'gol', 'goles')}, ` +
           `${cuantos(a, 'asistencia', 'asistencias')}">` +
-          `<span class="mitad gol" data-cero="${x.goles === 0 ? 'si' : 'no'}"` +
-          ` style="height:${alto(x.goles)}px"></span>` +
-          `<span class="mitad asist" data-cero="${a === 0 ? 'si' : 'no'}"` +
-          ` style="height:${alto(a)}px"></span>` +
+          `<span class="barra" data-cero="${x.goles === 0 ? 'si' : 'no'}"` +
+          ` style="height:${alto}px"></span>` +
+          // El punto solo aparece si hubo asistencias: uno en cero seria una
+          // marca sobre la linea de base afirmando algo que no paso.
+          (a > 0 ? `<span class="punto-asist" style="bottom:${enPx(a) + 2}px"></span>` : '') +
           `</button>`
         )
       })
       .join('')
 
-    /*
-      La leyenda enseña el ORDEN, no dos colores.
-
-      Dos cuadritos casi iguales no distinguen nada — es justo el problema que
-      acabamos de dejar de resolver con el color. Un dibujito de la pareja, con
-      la barra izquierda alta y la derecha baja, dice de un vistazo cual es
-      cual, y coincide con lo que se ve abajo.
-    */
     leyenda.innerHTML =
-      `<span class="leyenda-par">` +
-      `<i class="par-glifo"><b></b><u></u></i>` +
-      `<span>Goles, después asistencias</span></span>`
+      `<span><i style="background:var(--marca-partido)"></i>Goles</span>` +
+      `<span><i class="punto-leyenda"></i>Asistencias</span>`
 
     const g = partidos.reduce((n, x) => n + x.goles, 0)
     const a = sumaConocida(partidos, 'asistencias')
