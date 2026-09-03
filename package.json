@@ -6,6 +6,7 @@
   "description": "StickIQ — registro de temporada de hockey césped",
   "scripts": {
     "test": "node pruebas/correr.mjs",
-    "revisar": "node scripts/revisar.mjs"
+    "revisar": "node scripts/revisar.mjs",
+    "construir": "node scripts/construir.mjs"
   }
 }

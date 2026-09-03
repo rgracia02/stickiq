@@ -1,0 +1,4422 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<!-- viewport-fit=cover: sin esto queda una franja blanca bajo el notch. -->
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Tu temporada de hockey césped: partidos, entrenamientos, dónde y cuándo marcas.">
+
+<!-- Anclada a la pantalla de inicio, se abre sin barra de navegador. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="StickIQ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#edf1f4">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a1319">
+
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icono-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<style>
+  /*
+    El único hueco que dejaba el envoltorio del Artifact. La app trae sus
+    propios estilos; acá solo va lo que el navegador necesita antes de leerlos.
+  */
+  html { background: #edf1f4; }
+  @media (prefers-color-scheme: dark) { html { background: #0a1319; } }
+  :root[data-theme="dark"] { background: #0a1319; }
+  :root[data-theme="light"] { background: #edf1f4; }
+  /* Lo unico que el envoltorio del Artifact aportaba y la app no repite. El
+     area segura del iPhone no va aca: .barra-abajo ya la respeta sola. */
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<title>StickIQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+
+<style>
+  /*
+    El mundo es una cancha de agua: azul desde Londres 2012, porque la pelota
+    amarilla se lee mejor sobre azul que sobre verde. De ahí sale todo: el azul
+    es la superficie, el blanco son las líneas, el amarillo es la pelota — y por
+    eso el amarillo se usa sólo donde hay que tocar o donde hubo gol.
+  */
+  :root {
+    --cancha: #0e5c86;
+    --cancha-honda: #071a26;
+    --pelota: #f5c518;
+    --linea: #ffffff;
+
+    /* Neutros con sesgo al azul de la cancha, no grises de fábrica. */
+    --papel: #edf1f4;
+    --tarjeta: #ffffff;
+    --tinta: #0d1c26;
+    --tinta-suave: #5a6b76;
+    --borde: #d3dde4;
+    --verde: #1f8a5b;
+    --verde-texto: #1a7a50;
+    --rojo: #c0392f;
+
+
+    /* Marcas de grafico. No son los colores de marca: el amarillo pelota
+       tiene 1,59:1 sobre blanco y desaparece. Estos pasaron el validador
+       de daltonismo y contraste, en claro y en oscuro por separado. */
+    --marca-entreno: #b8770a;
+    --marca-partido: #1a7fbf;
+    --celda-vacia: #e3e9ee;
+    --marca-asist: #7b57c9;
+
+    /*
+      Dos colores que el amarillo pelota no puede hacer sobre fondo claro.
+
+      El amarillo tiene 1,44:1 sobre el papel y 1,63:1 sobre la tarjeta. Estaba
+      usado como anillo de foco, como marca de «tocaste esta celda» y como cifra
+      de goles: las tres cosas invisibles en tema claro. El propio archivo ya
+      decia veinte lineas mas arriba que ese amarillo desaparece sobre blanco, y
+      lo usaba igual — un comentario no impide nada.
+
+      Sobre la cancha, que siempre es azul oscura, el amarillo sigue mandando.
+    */
+    --foco: #0e5c86;
+    --gol-cifra: #96650a;
+
+    --paso: 0.9rem;
+    --radio: 14px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel: #0a1319;
+      --tarjeta: #12212b;
+      --tinta: #e6edf2;
+      --tinta-suave: #8ba0ad;
+      --borde: #223642;
+      --verde: #3fbd84;
+      --verde-texto: #3fbd84;
+      --rojo: #ef6b60;
+      --marca-entreno: #bd8718;
+      --marca-partido: #2f8fcc;
+      --celda-vacia: #1b2c37;
+      --marca-asist: #9b7ae0;
+      --foco: #f5c518;
+      --gol-cifra: #f5c518;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --papel: #0a1319;
+    --tarjeta: #12212b;
+    --tinta: #e6edf2;
+    --tinta-suave: #8ba0ad;
+    --borde: #223642;
+    --verde: #3fbd84;
+    --verde-texto: #3fbd84;
+    --rojo: #ef6b60;
+    --marca-entreno: #bd8718;
+    --marca-partido: #2f8fcc;
+    --celda-vacia: #1b2c37;
+    --marca-asist: #9b7ae0;
+    --foco: #f5c518;
+    --gol-cifra: #f5c518;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--papel);
+    color: var(--tinta);
+    font: 400 16px/1.5 Barlow, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .hoja {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1.1rem 1rem 7.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+
+  /* ---------- tipografía ---------- */
+
+  .rotulo {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+  }
+
+  .cifra {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.9;
+  }
+
+  h1 {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.6rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  /* ---------- cabecera ---------- */
+
+  .cabecera {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .cabecera p {
+    margin: 0.1rem 0 0;
+    font-size: 0.85rem;
+    color: var(--tinta-suave);
+  }
+
+  /* ---------- la cancha ---------- */
+
+  /*
+    Esta tarjeta no cambia con el tema: es la cancha, y una cancha de agua es
+    azul de noche y de día. El resto de la página sí respira con el sistema.
+  */
+  .cancha {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radio);
+    background: linear-gradient(160deg, var(--cancha) 0%, var(--cancha-honda) 130%);
+    color: var(--linea);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .lineas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.16;
+    pointer-events: none;
+  }
+
+  .cancha > *:not(.lineas) { position: relative; }
+
+  .cancha .rotulo { color: rgb(255 255 255 / 0.72); }
+
+  /* ---------- el botón pelota ---------- */
+
+  .fila-hoy {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .pelota {
+    flex: none;
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: radial-gradient(circle at 34% 30%, #ffe27a 0%, var(--pelota) 52%, #c99a06 100%);
+    color: #3a2c00;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    line-height: 1.05;
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+    transition: transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .pelota:active { transform: scale(0.93); }
+
+  .pelota[data-hecho="si"] {
+    background: rgb(255 255 255 / 0.1);
+    color: var(--linea);
+    border: 2px solid rgb(255 255 255 / 0.4);
+    box-shadow: none;
+  }
+
+  .pelota .tic { display: block; font-size: 1.9rem; line-height: 1; }
+
+  @keyframes golpe {
+    0% { transform: scale(1); }
+    38% { transform: scale(1.16); }
+    100% { transform: scale(1); }
+  }
+
+  .pelota.golpeada { animation: golpe 340ms cubic-bezier(0.32, 0.72, 0, 1); }
+
+  .texto-hoy { min-width: 0; }
+  .texto-hoy .titular {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    line-height: 1.05;
+  }
+  .texto-hoy p {
+    margin: 0.3rem 0 0;
+    font-size: 0.86rem;
+    color: rgb(255 255 255 / 0.76);
+  }
+
+  .deshacer {
+    background: none;
+    border: none;
+    /* «Deshacer» y «Agregar goles» median 26 px de alto sobre la cancha. */
+    display: inline-block;
+    min-height: 44px;
+    padding: 0.7rem 0;
+    margin-top: 0.2rem;
+    color: rgb(255 255 255 / 0.76);
+    font: inherit;
+    font-size: 0.82rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .deshacer:hover { color: var(--linea); }
+
+  /* ---------- la semana ---------- */
+
+  .semana {
+    border-top: 1px solid rgb(255 255 255 / 0.18);
+    padding-top: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .ranuras { display: flex; gap: 0.4rem; }
+
+  .ranura {
+    width: 34px;
+    height: 8px;
+    border-radius: 99px;
+    background: rgb(255 255 255 / 0.2);
+  }
+  .ranura[data-llena="si"] { background: var(--pelota); }
+
+  .semana .cuenta {
+    margin-left: auto;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.04em;
+    color: rgb(255 255 255 / 0.82);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- tarjetas ---------- */
+
+  .tarjeta {
+    background: var(--tarjeta);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 1rem;
+  }
+
+  .encabezado-seccion {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.7rem;
+  }
+
+  /* ---------- resumen de temporada ---------- */
+
+  .resumen {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.9rem 0.5rem;
+  }
+
+  .dato { text-align: center; }
+  .dato .cifra { font-size: 1.9rem; display: block; }
+  /* 0,68 rem son 10,9 px: por debajo de lo que se lee comodo en un telefono,
+     y estas son las etiquetas de las seis cifras principales. */
+  .dato .rotulo { font-size: 0.75rem; letter-spacing: 0.07em; margin-top: 0.25rem; display: block; }
+  .dato[data-tono="gol"] .cifra { color: var(--gol-cifra); }
+  .nota-entreno {
+    display: block;
+    margin-top: 0.15rem;
+    /* Sube de 0,62 a 0,72 rem y deja el ambar: a ese tamano el ambar da 3,7:1
+       sobre blanco, y hace falta 4,5. Lo que decia el color ya lo dice el texto
+       («+4 entren.»), asi que no se pierde nada al quitarlo. */
+    font-size: 0.72rem;
+    color: var(--tinta-suave);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- días de competencia ---------- */
+
+  .dias { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .dia {
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    overflow: hidden;
+  }
+
+  .dia-cabeza {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    background: color-mix(in srgb, var(--cancha) 8%, var(--tarjeta));
+    border-bottom: 1px solid var(--borde);
+  }
+
+  .dia-cabeza .nombre {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .dia-cabeza .fecha { font-size: 0.8rem; color: var(--tinta-suave); }
+
+  .partido {
+    /* Un <button> centra su contenido y trae su propia tipografia: las dos
+       cosas se dicen a mano o la fila deja de parecerse a las de al lado. */
+    width: 100%;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    background: none;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.65rem 0.85rem 0.65rem 0.6rem;
+    border-bottom: 1px solid var(--borde);
+    border-left: 3px solid transparent;
+  }
+  .partido[data-r="g"] { border-left-color: var(--verde); }
+  .partido[data-r="p"] { border-left-color: var(--rojo); }
+  .partido[data-r="e"] { border-left-color: var(--borde); }
+  .partido:last-child { border-bottom: none; }
+  .partido:hover { background: color-mix(in srgb, var(--cancha) 6%, transparent); }
+
+  .partido .rival { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .partido .marcador {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* El resultado se dice dos veces: la raya del costado y el color del
+     marcador. Solo con color, quien no distingue rojo de verde no lee nada. */
+  .partido .marcador[data-r="g"] { color: var(--verde); }
+  .partido .marcador[data-r="p"] { color: var(--rojo); }
+  .partido .marcador[data-r="e"] { color: var(--tinta-suave); }
+
+  /* Los de 7 llevan marca; los de 11 no, porque son la mayoria y marcarlos
+     todos seria ruido. La ausencia de marca ya dice «de 11». */
+  /* Los penales llevan su propia marca: antes compartia clase con la del
+     formato, asi que un «2–2ᵖ» y un «3–1⁷» se leian como la misma clase de
+     anotacion en la fila mas densa de la app. */
+  .marca-penales {
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 0.2rem;
+    padding: 0 0.25rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--tinta) 12%, transparent);
+    color: var(--tinta-suave);
+    vertical-align: 1px;
+  }
+
+  .formato-7 {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    vertical-align: super;
+    margin-left: 0.15rem;
+    color: var(--tinta-suave);
+  }
+
+  .goles-mios {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.45rem;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--pelota) 26%, transparent);
+    color: var(--tinta);
+    white-space: nowrap;
+  }
+  .goles-mios[data-cero="si"] { visibility: hidden; }
+
+
+  /* ---------- nivel ---------- */
+
+  /*
+    El nivel sube por aparecer, no por rendir. Si dependiera de tus goles, una
+    racha seca —que en el hockey pasa y no siempre es culpa tuya— sería la app
+    diciéndote que vas peor justo cuando peor lo estás pasando. Aparecer es lo
+    único que sí controlas, y sigue subiendo en las semanas malas.
+  */
+  .nivel { display: flex; align-items: center; gap: 1rem; }
+
+  .nivel-numero {
+    flex: none;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--marca-partido) 14%, transparent);
+    border: 2px solid var(--marca-partido);
+  }
+  .nivel-numero .cifra { font-size: 2.1rem; color: var(--marca-partido); }
+
+  .nivel-texto { flex: 1; min-width: 0; }
+  .nivel-texto .que-falta { font-size: 0.88rem; color: var(--tinta-suave); margin: 0.35rem 0 0.5rem; }
+
+  .medidor {
+    height: 10px;
+    border-radius: 99px;
+    background: var(--celda-vacia);
+    overflow: hidden;
+  }
+  .medidor span {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    background: var(--marca-partido);
+    transition: width 420ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  /* ---------- mapa de temporada ---------- */
+
+  .mapa { display: flex; flex-direction: column; gap: 0.35rem; }
+
+  .mapa-dias, .mapa-fila {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .mapa-dias span {
+    text-align: center;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    color: var(--tinta-suave);
+  }
+
+  .celda {
+    aspect-ratio: 1;
+    border-radius: 5px;
+    border: none;
+    padding: 0;
+    background: var(--celda-vacia);
+    cursor: pointer;
+    position: relative;
+  }
+  .celda[data-que="entreno"] { background: var(--marca-entreno); }
+  .celda[data-que="partido"] { background: var(--marca-partido); }
+  /* Un día con las dos cosas lleva las dos marcas: media celda de cada una, no
+     un color intermedio que no significa nada. */
+  .celda[data-que="ambos"] {
+    background: linear-gradient(135deg, var(--marca-partido) 50%, var(--marca-entreno) 50%);
+  }
+  .celda[data-futuro="si"] { background: none; box-shadow: inset 0 0 0 1px var(--celda-vacia); cursor: default; }
+  .celda[data-hoy="si"] { outline: 2px solid var(--tinta); outline-offset: 1px; }
+  .celda[aria-pressed="true"] { outline: 2px solid var(--foco); outline-offset: 1px; }
+
+  .leyenda {
+    display: flex;
+    gap: 0.9rem;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--tinta-suave);
+  }
+  .leyenda i {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    margin-right: 0.35rem;
+    vertical-align: -1px;
+  }
+
+  /* ---------- goles por partido ---------- */
+
+  .barras {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 92px;
+    border-bottom: 1px solid var(--borde);
+    padding-bottom: 1px;
+  }
+
+  .columna {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .barra {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    background: var(--marca-partido);
+    transition: opacity 140ms ease;
+  }
+  /* Un partido sin goles tuyos igual ocurrió: se deja un tocón visible en vez
+     de una columna vacía que se lee como «ese día no jugaste». */
+  .barra[data-cero="si"] { background: var(--borde); }
+  .columna[aria-pressed="true"] .barra { outline: 2px solid var(--foco); outline-offset: 1px; }
+
+  .detalle {
+    margin-top: 0.6rem;
+    min-height: 1.35rem;
+    font-size: 0.84rem;
+    color: var(--tinta-suave);
+  }
+  .detalle b { color: var(--tinta); font-weight: 600; }
+
+
+  /* ---------- cuenta regresiva ---------- */
+
+  /*
+    La razón para abrirla un día que no entrenaste. Sin esto la app solo tiene
+    algo que decir cuando ya hiciste algo, y una app que solo habla después no
+    se abre antes.
+  */
+  .proximo {
+    border-top: 1px solid rgb(255 255 255 / 0.18);
+    padding-top: 0.85rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+
+  .proximo .dias-faltan {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.9rem;
+    line-height: 0.9;
+    font-variant-numeric: tabular-nums;
+    color: var(--pelota);
+  }
+
+  .proximo .que { font-size: 0.86rem; color: rgb(255 255 255 / 0.82); }
+
+  .proximo button {
+    margin-left: auto;
+    background: none;
+    border: none;
+    /* 0,6 daba 3,7:1 sobre el azul de la cancha y esto es texto. */
+    color: rgb(255 255 255 / 0.78);
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    /* Media 100 x 28: por debajo de lo que un pulgar acierta a la primera. */
+    min-height: 44px;
+    padding: 0.3rem 0.5rem;
+  }
+  .proximo button:hover { color: var(--linea); }
+
+  /* ---------- logros ---------- */
+
+  .logros {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.7rem 0.5rem;
+  }
+
+  .logro {
+    text-align: center;
+    /* Un boton trae su propio fondo, borde y tipografia: hay que decirlo todo. */
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .escudo {
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 62px;
+    margin: 0 auto;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .logro[data-tengo="si"] .escudo {
+    background: color-mix(in srgb, var(--marca-entreno) 18%, transparent);
+    border: 2px solid var(--marca-entreno);
+    color: var(--marca-entreno);
+  }
+  /* Uno bloqueado no se esconde ni se apaga del todo: tiene que verse que está
+     ahí, esperando. Un hueco vacío no da ganas de nada. */
+  .logro[data-tengo="no"] .escudo {
+    background: none;
+    border: 2px dashed var(--borde);
+    color: var(--tinta-suave);
+    opacity: 0.75;
+  }
+
+  .logro .nombre {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.74rem;
+    line-height: 1.25;
+    color: var(--tinta-suave);
+  }
+  .logro[data-tengo="si"] .nombre { color: var(--tinta); font-weight: 500; }
+
+  .cuenta-logros {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--tinta-suave);
+    font-variant-numeric: tabular-nums;
+  }
+
+
+  /* ---------- conmutador de gráficos ---------- */
+
+  .pestanas { display: flex; gap: 0.3rem; margin-bottom: 0.9rem; }
+  .pestanas button {
+    flex: 1;
+    height: 36px;
+    border-radius: 9px;
+    border: 1px solid var(--borde);
+    background: var(--tarjeta);
+    color: var(--tinta-suave);
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .pestanas button[aria-selected="true"] {
+    background: var(--cancha);
+    border-color: var(--cancha);
+    color: #fff;
+  }
+
+  /* Barra apilada: el gol abajo, la asistencia encima, con 2 px del color de la
+     tarjeta entre medio para que se lean como dos y no como un degradado. */
+  .apilada { display: flex; flex-direction: column-reverse; gap: 2px; width: 100%; }
+  .apilada span { display: block; border-radius: 2px; }
+  .apilada span:last-child { border-radius: 4px 4px 2px 2px; }
+  .trozo-gol { background: var(--marca-partido); }
+  .trozo-asist { background: var(--marca-asist); }
+
+  /* Un partido sin minutos registrados no es un partido de cero minutos: se
+     dibuja hueco para que se vea que falta el dato, no que el dato es cero. */
+  .barra[data-sin-dato="si"] {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--borde);
+    border-radius: 4px 4px 0 0;
+  }
+
+  .linea-meta {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed var(--tinta-suave);
+    opacity: 0.55;
+  }
+  .linea-meta span {
+    position: absolute;
+    right: 0;
+    top: -0.95rem;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+  }
+
+
+  /* ---------- el mapa de la D ---------- */
+
+  /*
+    La D es lo que hace único a este deporte: un gol solo vale desde dentro del
+    semicírculo. Marcar dónde anotaste cuesta un toque y al final de la
+    temporada dice algo que ninguna cifra dice — desde dónde vives.
+
+    Medidas reales: radio 14,63 m desde cada poste, y los postes a 1,83 m del
+    centro. No son decorativas: la forma de la D es la que reconoces de la
+    cancha, y una aproximada se nota.
+  */
+  .cancha-d {
+    width: 100%;
+    display: block;
+    touch-action: manipulation;
+  }
+
+  .cancha-d .cesped { fill: var(--marca-partido); opacity: 0.07; }
+  .cancha-d .raya { stroke: var(--tinta-suave); fill: none; stroke-width: 0.28; opacity: 0.55; }
+  .cancha-d .arco { stroke: var(--tinta); fill: none; stroke-width: 0.7; }
+  .cancha-d .punto { fill: var(--marca-partido); stroke: var(--tarjeta); stroke-width: 0.35; }
+  .cancha-d .punto-nuevo { fill: var(--pelota); stroke: var(--tinta); stroke-width: 0.4; }
+
+  .d-poner { cursor: crosshair; }
+  .d-poner .cesped { opacity: 0.12; }
+
+
+  /* ---------- récords ---------- */
+
+  /*
+    Los logros se acaban; los récords no. Esa es toda la diferencia y es la
+    razón de que existan los dos: cuando ya desbloqueaste los doce, lo único que
+    queda por batir es a ti mismo.
+  */
+  .records { display: flex; flex-direction: column; gap: 0.1rem; }
+
+  .record {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .record:last-child { border-bottom: none; }
+
+  .record .que { font-size: 0.92rem; }
+  .record .cuando { display: block; font-size: 0.76rem; color: var(--tinta-suave); }
+  .record .marca {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.6rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--marca-partido);
+    line-height: 1;
+  }
+  .record[data-vacio="si"] .marca { color: var(--tinta-suave); }
+
+
+  /* ---------- el resumen de temporada ---------- */
+
+  /*
+    Está hecho para una captura de pantalla. Por eso es una sola tarjeta alta y
+    no una pantalla con secciones: lo que se manda al grupo es una imagen, y una
+    imagen no tiene scroll. Todo lo que importa tiene que caber de una.
+  */
+  .lamina {
+    background: linear-gradient(160deg, var(--cancha) 0%, var(--cancha-honda) 130%);
+    color: var(--linea);
+    border-radius: var(--radio);
+    padding: 1.5rem 1.25rem 1.25rem;
+    max-width: 380px;
+    width: 100%;
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+
+  .lamina .encabezado-lamina {
+    text-align: center;
+    border-bottom: 1px solid rgb(255 255 255 / 0.2);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+  .lamina h3 {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin: 0;
+    line-height: 0.95;
+  }
+  .lamina .desde-cuando {
+    font-size: 0.8rem;
+    color: rgb(255 255 255 / 0.7);
+    margin: 0.3rem 0 0;
+  }
+
+  .cifras-lamina {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1.1rem;
+  }
+  .cifras-lamina div { text-align: center; }
+  .cifras-lamina .cifra { font-size: 1.9rem; display: block; }
+  .cifras-lamina span:last-child {
+    display: block;
+    margin-top: 0.2rem;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.7);
+  }
+
+  .lamina .cancha-d .cesped { fill: #fff; opacity: 0.08; }
+  .lamina .cancha-d .raya { stroke: #fff; opacity: 0.4; }
+  .lamina .cancha-d .arco { stroke: #fff; }
+  .lamina .cancha-d .punto { fill: var(--pelota); stroke: none; }
+
+  .lamina .titulillo {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.6);
+    margin: 1.1rem 0 0.5rem;
+  }
+
+  .lamina .hito {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.7rem;
+    font-size: 0.87rem;
+    padding: 0.3rem 0;
+  }
+  .lamina .hito b { font-weight: 600; }
+  .lamina .hito span:last-child { color: rgb(255 255 255 / 0.72); text-align: right; }
+
+  .escuditos { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .escuditos i {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    font-style: normal;
+    background: rgb(255 255 255 / 0.12);
+    border: 1px solid rgb(255 255 255 / 0.35);
+  }
+
+  .firma {
+    margin: 1.2rem 0 0;
+    text-align: center;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.45);
+  }
+
+  /* ---------- celebración ---------- */
+
+  .fiesta {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    background: rgb(4 12 18 / 0.6);
+    padding: 1.5rem;
+  }
+  .fiesta[hidden] { display: none !important; }
+
+  .medalla {
+    background: linear-gradient(160deg, var(--cancha) 0%, var(--cancha-honda) 130%);
+    color: var(--linea);
+    border-radius: var(--radio);
+    padding: 2rem 1.5rem 1.5rem;
+    text-align: center;
+    max-width: 320px;
+    width: 100%;
+    animation: llega 460ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  @keyframes llega {
+    from { transform: scale(0.86) translateY(14px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .medalla .escudo-grande {
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--pelota);
+    color: #3a2c00;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 2.4rem;
+    animation: rebote 620ms cubic-bezier(0.32, 0.72, 0, 1) 120ms both;
+  }
+
+  @keyframes rebote {
+    0% { transform: scale(0.4); }
+    55% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+
+  .medalla .desbloqueado {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--pelota);
+  }
+
+  .medalla h3 {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.7rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin: 0.35rem 0 0.4rem;
+  }
+
+  .medalla p { margin: 0 0 1.2rem; font-size: 0.88rem; color: rgb(255 255 255 / 0.78); }
+
+  .medalla .boton {
+    background: var(--pelota);
+    border-color: var(--pelota);
+    color: #3a2c00;
+    width: 100%;
+  }
+
+
+
+  .aviso-suave {
+    background: color-mix(in srgb, var(--marca-partido) 10%, var(--tarjeta));
+    border: 1px solid color-mix(in srgb, var(--marca-partido) 35%, var(--borde));
+    border-radius: 10px;
+    padding: 0.8rem 0.9rem;
+    font-size: 0.87rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  .aviso-suave .boton { padding: 0.4rem 0.7rem; }
+
+  .separador {
+    border: none;
+    border-top: 1px solid var(--borde);
+    margin: 0.3rem 0;
+  }
+
+  .caja-texto {
+    width: 100%;
+    font: 400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--tinta);
+    background: var(--tarjeta);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 0.7rem;
+    resize: vertical;
+  }
+
+
+  /* ---------- el cuarto de cada gol ---------- */
+
+  .gol-fila {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+  }
+  .gol-fila > span:first-child {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    min-width: 46px;
+  }
+  .gol-fila .fichas { flex: 1; }
+  .gol-fila .fichas button { min-width: 0; height: 38px; font-size: 0.82rem; }
+
+  /* Las cuatro barras del reparto por cuarto. Van dentro de la tarjeta de la D
+     porque hablan de lo mismo: dónde y cuándo marcas. */
+  .cuartos {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    align-items: end;
+    height: 64px;
+    margin-top: 1rem;
+  }
+  .cuartos div { display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+  .cuartos i {
+    display: block;
+    border-radius: 4px 4px 0 0;
+    background: var(--marca-partido);
+  }
+  .cuartos b {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--tinta);
+  }
+  .pies-cuartos {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+  }
+  .pies-cuartos span {
+    text-align: center;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--tinta-suave);
+  }
+
+
+
+
+  /* ---------- el calendario ---------- */
+
+  .agenda { display: flex; flex-direction: column; }
+
+  .fila-agenda {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .fila-agenda:last-child { border-bottom: none; }
+  /* Lo que ya pasó se apaga, no se esconde: sigue estando para que lo quites tú. */
+  .fila-agenda[data-pasado="si"] { opacity: 0.5; }
+  .fila-agenda .cuando {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--tinta-suave);
+  }
+
+  /* ---------- los rivales de siempre ---------- */
+
+  /*
+    Fichas y no una lista desplegable. El <datalist> del navegador sugiere pero
+    no obliga, y en iPhone muchas veces ni aparece — asi que la mitad de las
+    veces escribes el nombre a mano y basta una mayuscula distinta para partir
+    en dos el historial contra un equipo.
+
+    Una ficha que se toca no se puede escribir mal.
+  */
+  .chips-rival {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+  }
+  .chips-rival button {
+    border: 1px solid var(--borde);
+    background: var(--tarjeta);
+    color: var(--tinta);
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .chips-rival button[aria-pressed="true"] {
+    background: var(--cancha);
+    border-color: var(--cancha);
+    color: #fff;
+  }
+
+  /* ---------- contra quién ---------- */
+
+  .rivales { display: flex; flex-direction: column; }
+
+  .rival-fila {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .rival-fila:last-child { border-bottom: none; }
+
+  .rival-fila .quien { font-size: 0.95rem; font-weight: 500; }
+  .rival-fila .cuantos {
+    display: block;
+    font-size: 0.76rem;
+    color: var(--tinta-suave);
+  }
+
+  /* Ganados, empatados y perdidos como tres cifras separadas, no como un
+     porcentaje: con tres partidos jugados, «67 %» suena a estadística y no
+     dice nada que «2-0-1» no diga mejor. */
+  .balance {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+  /* Un verde propio para texto: el de los estados da 4,33:1 sobre blanco y
+     estas son cifras que hay que leer, no una raya de color. */
+  .balance .g { color: var(--verde-texto); }
+  .balance .p { color: var(--rojo); }
+  .balance .e { color: var(--tinta-suave); }
+
+  .rival-fila .mios {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--pelota) 26%, transparent);
+    white-space: nowrap;
+  }
+  .rival-fila .mios[data-cero="si"] { visibility: hidden; }
+
+  /* ---------- vidrio ---------- */
+
+  /*
+    Liquid Glass es el material de la capa de NAVEGACIÓN: barras, controles
+    flotantes, hojas. Nunca el de la capa de contenido. Por eso la barra de
+    abajo, las hojas y las medallas llevan vidrio, y las tarjetas de números no:
+    vidrio sobre cifras las vuelve más difíciles de leer, que es lo contrario de
+    para lo que existen.
+
+    Dos reglas más del sistema que se respetan acá:
+    · Nunca vidrio sobre vidrio. Lo que va encima se resuelve con rellenos.
+    · Una sola variante. Esta es la «regular», la que se adapta a lo que tenga
+      detrás; la «clara» pide contenido de imagen debajo y una capa que atenúe.
+
+    Y una advertencia honesta: el vidrio de Apple refracta la luz de verdad, con
+    shaders. Esto es desenfoque, saturación y brillo de canto — un homenaje bien
+    hecho, no la cosa misma.
+  */
+  .vidrio {
+    background: color-mix(in srgb, var(--tarjeta) 58%, transparent);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    border: 1px solid color-mix(in srgb, var(--tinta) 12%, transparent);
+    /* El brillo de arriba es lo que hace que se lea como un canto biselado y no
+       como un rectángulo borroso. Es la mitad del efecto. */
+    box-shadow:
+      0 10px 34px rgb(0 0 0 / 0.2),
+      inset 0 1px 0 rgb(255 255 255 / 0.28);
+  }
+
+  /*
+    Sin transparencia y con contraste alto, el vidrio se vuelve sólido. En el
+    sistema de Apple eso pasa solo; en la web hay que escribirlo, y no hacerlo
+    deja la app peor justamente para quien activó esas preferencias porque las
+    necesita.
+  */
+  @media (prefers-reduced-transparency: reduce) {
+    .vidrio {
+      background: var(--tarjeta);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  @media (prefers-contrast: more) {
+    .vidrio {
+      background: var(--tarjeta);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-color: var(--tinta);
+    }
+  }
+
+  /* ---------- la barra de abajo ---------- */
+
+  .barra-abajo {
+    position: fixed;
+    left: 50%;
+    bottom: calc(0.85rem + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 30;
+    display: flex;
+    gap: 0.2rem;
+    padding: 0.3rem;
+    /* Cápsula: el radio es la mitad del alto, como manda el sistema de formas. */
+    border-radius: 999px;
+    width: min(360px, calc(100vw - 2rem));
+  }
+
+  .barra-abajo button {
+    flex: 1;
+    height: 44px;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--tinta-suave);
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.88rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 160ms ease;
+  }
+
+  /*
+    Solo la pestaña activa lleva color. «Cuando todo está teñido, nada destaca»:
+    el resto queda en tinta apagada y sin relleno.
+  */
+  .barra-abajo button[aria-selected="true"] {
+    background: var(--cancha);
+    color: #fff;
+  }
+
+  /*
+    El degradado de abajo separa lo que se desplaza de lo que flota. Existe
+    porque hay algo flotando encima; sin la barra sobraría.
+  */
+  .borde-scroll {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 96px;
+    pointer-events: none;
+    z-index: 20;
+    background: linear-gradient(to top, var(--papel) 18%, transparent);
+  }
+
+  .pantalla { display: flex; flex-direction: column; gap: 1.1rem; }
+  .pantalla[hidden] { display: none !important; }
+
+  /* ---------- controles ---------- */
+
+  .boton {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    /* 44 px es el minimo con el que un dedo acierta. Estos botones median 39, y
+       entre ellos estan «Guardar» y «Cancelar» al pie de cada hoja. */
+    min-height: 44px;
+    padding: 0.6rem 0.95rem;
+    border-radius: 10px;
+    border: 1px solid var(--borde);
+    background: var(--tarjeta);
+    color: var(--tinta);
+    cursor: pointer;
+    transition: border-color 140ms ease;
+  }
+  .boton:hover { border-color: var(--cancha); }
+
+  .boton[data-tipo="fuerte"] {
+    background: var(--cancha);
+    border-color: var(--cancha);
+    color: #fff;
+  }
+  .boton[data-tipo="fuerte"]:hover { background: #0c5077; }
+
+  .boton[data-tipo="callado"] {
+    border: none;
+    background: none;
+    color: var(--tinta-suave);
+    padding: 0.5rem 0.6rem;
+  }
+  .boton[data-tipo="callado"]:hover { color: var(--tinta); }
+
+  :where(button, input, [tabindex]):focus-visible {
+    outline: 2px solid var(--foco);
+    outline-offset: 2px;
+  }
+
+  /* La cancha es una superficie azul fija, no sigue el tema: ahí el que se ve
+     es el amarillo, con 4,45:1 contra el azul. */
+  .cancha :where(button, input, [tabindex]):focus-visible {
+    outline-color: var(--pelota);
+  }
+
+  .vacio {
+    color: var(--tinta-suave);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 1.1rem 0.5rem;
+  }
+
+  /* ---------- hoja de registro ---------- */
+
+  .telon {
+    position: fixed;
+    inset: 0;
+    background: rgb(4 12 18 / 0.55);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 20;
+  }
+  .telon[hidden] { display: none !important; }
+
+  .hoja-registro {
+    background: color-mix(in srgb, var(--papel) 72%, transparent);
+    width: 100%;
+    max-width: 480px;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: var(--radio) var(--radio) 0 0;
+    padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .campo { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .campo input[type="text"],
+  .campo input[type="date"],
+  .campo select {
+    font: inherit;
+    color: var(--tinta);
+    background: var(--tarjeta);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 0.7rem 0.75rem;
+    width: 100%;
+  }
+
+  /* Sumar con el pulgar, no teclear: entre partido y partido, cansado, un
+     teclado numérico en el celular es tres toques y un error. */
+  .contador {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .contador button {
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    border: 1px solid var(--borde);
+    background: var(--tarjeta);
+    color: var(--tinta);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .contador button:active { background: var(--borde); }
+
+  .contador output {
+    flex: 1;
+    text-align: center;
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .marcador-doble {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: end;
+    gap: 0.5rem;
+  }
+  .marcador-doble .guion {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-size: 1.6rem;
+    color: var(--tinta-suave);
+    padding-bottom: 0.55rem;
+  }
+  .mini-rotulo {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    text-align: center;
+  }
+
+  /*
+    Fichas en vez de un contador para los minutos. Nadie sabe que jugó 47
+    minutos: sabe que jugó todo, o la mitad, o un rato. Un contador de a cinco
+    son doce toques para decir «todo el partido», y pide una precisión que no
+    tienes. Las fichas son un toque y no mienten.
+  */
+  .fichas { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .fichas button {
+    flex: 1;
+    min-width: 62px;
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--borde);
+    background: var(--tarjeta);
+    color: var(--tinta-suave);
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+  }
+  .fichas button[aria-pressed="true"] {
+    background: var(--cancha);
+    border-color: var(--cancha);
+    color: #fff;
+  }
+
+  .detalle-hoy {
+    margin-top: 0.45rem;
+    font-size: 0.82rem;
+    color: rgb(255 255 255 / 0.72);
+  }
+
+  .sensacion { display: flex; gap: 0.4rem; }
+  .sensacion button {
+    flex: 1;
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--borde);
+    background: var(--tarjeta);
+    color: var(--tinta-suave);
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  .sensacion button[aria-pressed="true"] {
+    background: var(--cancha);
+    border-color: var(--cancha);
+    color: #fff;
+  }
+
+  .acciones { display: flex; gap: 0.6rem; }
+  .acciones .boton { flex: 1; }
+
+  .pie {
+    text-align: center;
+    color: var(--tinta-suave);
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
+  .aviso {
+    background: color-mix(in srgb, var(--rojo) 12%, var(--tarjeta));
+    border: 1px solid color-mix(in srgb, var(--rojo) 40%, var(--borde));
+    border-radius: 10px;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.85rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="hoja">
+  <header class="cabecera">
+    <div>
+      <h1>StickIQ</h1>
+      <p>Tu temporada de césped</p>
+    </div>
+    <button class="boton" data-tipo="callado" id="btn-datos" type="button">Datos</button>
+  </header>
+
+  <div id="aviso-espacio" class="aviso" hidden></div>
+  <div id="aviso-copia" class="aviso-suave" hidden></div>
+
+  <!-- ══════════ HOY ══════════ -->
+  <div class="pantalla" data-pantalla="hoy">
+
+    <section class="cancha">
+      <svg class="lineas" viewBox="-2 -2 95.4 59" preserveAspectRatio="xMidYMid slice"
+           aria-hidden="true">
+        <!--
+          La cancha entera, con las medidas del reglamento.
+
+          Antes hubo tres arcos sueltos, despues un palo dibujado a mano y luego
+          un semicirculo en vez de una D. Los tres fallaron por lo mismo: una
+          forma que depende de que yo acierte a ojo, sin poder mirarla. Esta sale
+          de numeros del reglamento y se comprueba: cada arco tiene que estar
+          centrado en un poste, y el tramo recto tiene que medir 3,66.
+        -->
+        <g fill="none" stroke="#fff" stroke-width="0.55" stroke-linejoin="round">
+          <rect x="0" y="0" width="91.4" height="55" />
+
+          <line x1="45.7" y1="0" x2="45.7" y2="55" />
+          <line x1="22.9" y1="0" x2="22.9" y2="55" />
+          <line x1="68.5" y1="0" x2="68.5" y2="55" />
+
+          <!-- La D de la izquierda. -->
+          <path d="M 0 11.04 A 14.63 14.63 0 0 1 14.63 25.67 L 14.63 29.33
+                   A 14.63 14.63 0 0 1 0 43.96" />
+          <path d="M 0 6.04 A 19.63 19.63 0 0 1 19.63 25.67 L 19.63 29.33
+                   A 19.63 19.63 0 0 1 0 48.96" stroke-dasharray="1.6 1.6" opacity="0.6" />
+
+          <!-- Y la de la derecha, espejada. -->
+          <path d="M 91.4 11.04 A 14.63 14.63 0 0 0 76.77 25.67 L 76.77 29.33
+                   A 14.63 14.63 0 0 0 91.4 43.96" />
+          <path d="M 91.4 6.04 A 19.63 19.63 0 0 0 71.77 25.67 L 71.77 29.33
+                   A 19.63 19.63 0 0 0 91.4 48.96" stroke-dasharray="1.6 1.6" opacity="0.6" />
+
+          <!-- Los arcos, por fuera de la linea de fondo. -->
+          <rect x="-1.6" y="25.67" width="1.6" height="3.66" opacity="0.9" />
+          <rect x="91.4" y="25.67" width="1.6" height="3.66" opacity="0.9" />
+        </g>
+      </svg>
+
+      <div class="fila-hoy">
+        <button class="pelota" id="btn-entrene" type="button"></button>
+        <div class="texto-hoy">
+          <div class="titular" id="titular-hoy"></div>
+          <p id="sub-hoy"></p>
+          <button class="deshacer" id="btn-deshacer" type="button" hidden>Deshacer</button>
+          <button class="deshacer" id="btn-detalle-entreno" type="button" hidden
+                  style="margin-left:0.9rem">Agregar goles</button>
+          <p class="detalle-hoy" id="detalle-entreno" hidden></p>
+          <button class="deshacer" id="btn-partido-hoy" type="button">+ Anotar un partido</button>
+        </div>
+      </div>
+
+      <div class="proximo" id="proximo"></div>
+
+      <div class="semana">
+        <span class="rotulo">Esta semana</span>
+        <div class="ranuras" id="ranuras"></div>
+        <span class="cuenta" id="cuenta-semana"></span>
+      </div>
+    </section>
+
+    <section class="tarjeta">
+      <div class="encabezado-seccion"><h2>Tu nivel</h2></div>
+      <div class="nivel" id="nivel"></div>
+    </section>
+
+    <section class="tarjeta">
+      <div class="encabezado-seccion">
+        <h2>Tus récords</h2>
+        <span class="cuenta-logros">solo partidos</span>
+      </div>
+      <div class="records" id="records"></div>
+    </section>
+
+  </div>
+
+  <!-- ══════════ TEMPORADA ══════════ -->
+  <div class="pantalla" data-pantalla="temporada" hidden>
+
+    <section class="tarjeta">
+      <div class="encabezado-seccion">
+        <h2>En total</h2>
+        <span class="cuenta-logros">oficial</span>
+      </div>
+      <div class="resumen" id="resumen"></div>
+    </section>
+
+    <section class="tarjeta">
+      <div class="encabezado-seccion"><h2>Día a día</h2></div>
+      <div class="mapa" id="mapa"></div>
+      <p class="leyenda" style="margin:0.7rem 0 0">
+        <span><i style="background:var(--marca-entreno)"></i>Entrenamiento</span>
+        <span><i style="background:var(--marca-partido)"></i>Partido</span>
+      </p>
+      <p class="detalle" id="detalle-mapa">Toca un día para ver qué hubo.</p>
+    </section>
+
+    <section class="tarjeta">
+      <div class="encabezado-seccion"><h2>Tus números</h2></div>
+      <div class="pestanas" id="pestanas" role="tablist">
+        <button type="button" role="tab" data-vista="aporte" aria-selected="true">Aporte</button>
+        <button type="button" role="tab" data-vista="minutos" aria-selected="false">Minutos</button>
+        <button type="button" role="tab" data-vista="entrenos" aria-selected="false">Entrenos</button>
+        <button type="button" role="tab" data-vista="semanas" aria-selected="false">Semanas</button>
+      </div>
+      <div class="barras" id="barras"></div>
+      <p class="leyenda" id="leyenda-grafico" style="margin:0.7rem 0 0"></p>
+      <p class="detalle" id="detalle-goles"></p>
+    </section>
+
+    <section class="tarjeta" id="caja-d" hidden>
+      <div class="encabezado-seccion">
+        <h2>Desde dónde marcas</h2>
+        <span class="cuenta-logros" id="cuenta-d"></span>
+      </div>
+      <div id="mapa-d"></div>
+      <p class="detalle" id="detalle-d"></p>
+      <div id="reparto-cuartos"></div>
+    </section>
+
+    <section class="tarjeta" id="caja-rivales" hidden>
+      <div class="encabezado-seccion"><h2>Contra quién</h2></div>
+      <div class="rivales" id="rivales"></div>
+    </section>
+
+    <section>
+      <div class="encabezado-seccion">
+        <h2>Partidos</h2>
+        <button class="boton" data-tipo="fuerte" id="btn-partido" type="button">+ Partido</button>
+      </div>
+      <div class="dias" id="dias"></div>
+    </section>
+
+  </div>
+
+  <!-- ══════════ LOGROS ══════════ -->
+  <div class="pantalla" data-pantalla="logros" hidden>
+
+    <section class="tarjeta">
+      <div class="encabezado-seccion">
+        <h2>Logros</h2>
+        <span class="cuenta-logros" id="cuenta-logros"></span>
+      </div>
+      <div class="logros" id="logros"></div>
+      <p class="detalle" id="detalle-logro">Toca uno para ver qué pide.</p>
+    </section>
+
+    <section class="tarjeta">
+      <div class="encabezado-seccion"><h2>Mi temporada</h2></div>
+      <p style="margin:0 0 0.9rem;font-size:0.9rem;color:var(--tinta-suave)">
+        Tu año en una lámina, hecha para sacarle una foto y mandarla al equipo.
+      </p>
+      <button class="boton" data-tipo="fuerte" id="btn-resumen" type="button"
+              style="width:100%">Ver mi temporada</button>
+    </section>
+
+  </div>
+
+  <p class="pie">
+    Se guarda en este teléfono, sin cuenta y sin internet.<br>
+    Nadie más la ve, y nadie más la respalda: la copia la sacas tú desde «Datos».
+  </p>
+</div>
+
+<div class="borde-scroll" aria-hidden="true"></div>
+
+<nav class="barra-abajo vidrio" id="barra-abajo" role="tablist" aria-label="Secciones">
+  <button type="button" role="tab" data-pantalla="hoy" aria-selected="true">Hoy</button>
+  <button type="button" role="tab" data-pantalla="temporada" aria-selected="false">Temporada</button>
+  <button type="button" role="tab" data-pantalla="logros" aria-selected="false">Logros</button>
+</nav>
+
+
+<div class="fiesta" id="fiesta" hidden>
+  <div class="medalla" role="dialog" aria-modal="true" aria-labelledby="titulo-medalla" id="medalla"></div>
+</div>
+
+<div class="telon" id="telon" hidden>
+  <div class="hoja-registro vidrio" role="dialog" aria-modal="true" aria-labelledby="titulo-hoja" id="hoja-registro"></div>
+</div>
+
+<script>
+  /*
+    La D — registro de temporada de hockey césped.
+
+    Una regla manda sobre todo lo demás: registrar tiene que ser más rápido que
+    no registrar. Un entrenamiento es un toque. Un partido son cuatro datos y
+    todos se suman con el pulgar, porque esto se llena entre partido y partido,
+    cansado, de pie, y un teclado numérico ahí son tres toques y una errata.
+
+    Los goles del rival se guardan aunque no sean «tuyos»: sin ellos no hay
+    resultado, y un registro de temporada que no dice si ganaste no es un
+    registro de temporada.
+  */
+
+  const CLAVE = 'la-d-v1'
+  const ESTADO_VACIO = {
+    meta: 3,
+    entrenamientos: [],
+    dias: [],
+    logros: {},
+    agenda: [],
+    records: null,
+    copiado: null,
+    avisoVisto: null
+  }
+
+  let estado = leer()
+  let borrador = null
+
+  // ---------- guardar ----------
+
+  function leer() {
+    // Cada lectura va en try: en una ventana privada o con los datos del sitio
+    // bloqueados, localStorage no devuelve vacío, lanza.
+    try {
+      const crudo = localStorage.getItem(CLAVE)
+      if (!crudo) return { ...ESTADO_VACIO }
+      const d = JSON.parse(crudo)
+      return {
+        meta: Number(d.meta) || 3,
+        // Los entrenamientos viejos eran solo una fecha; los nuevos son un
+        // objeto que además puede llevar goles y asistencias. Se convierten al
+        // leer, cada vez: así una copia antigua pegada desde «Mis datos» entra
+        // igual, y no hay un momento único de migración que se pueda perder.
+        entrenamientos: (Array.isArray(d.entrenamientos) ? d.entrenamientos : []).map((e) =>
+          typeof e === 'string' ? { fecha: e } : e
+        ),
+        // Los partidos viejos no tienen asistencias ni minutos, y eso NO es
+        // cero: es que no se sabe. Un cero inventado aquí se convierte en un
+        // gráfico que afirma algo que nunca mediste.
+        dias: (Array.isArray(d.dias) ? d.dias : []).map((dia) => ({
+          ...dia,
+          partidos: (dia.partidos ?? []).map((x) => aDatoLimpio({
+            asistencias: null,
+            minutos: null,
+            posiciones: [],
+            // null = no hubo penales. No es lo mismo que haberlos perdido.
+            penales: null,
+            duracion: null,
+            // Los partidos guardados antes de que existiera el formato se leen
+            // como de 11. No es un adivinar: cuando se anotaron, las fichas de
+            // periodo solo ofrecian cuatro cuartos, asi que eso es lo que
+            // significaban. Si alguno era de 7, se corrige editandolo.
+            formato: 11,
+            // Los guardados antes ofrecian cuatro cuartos en los de 11 y dos
+            // tiempos en los de 7: eso es lo que significaban sus periodos.
+            periodos: x.formato === 7 ? 2 : 4,
+            ...x
+          }))
+        })),
+        // Los campos nuevos se rellenan al leer, no al escribir: una app ya
+        // instalada tiene datos sin ellos, y ahi es donde revienta.
+        logros: d.logros && typeof d.logros === 'object' ? d.logros : {},
+        /*
+          De un compromiso a una lista.
+
+          Antes solo cabia el proximo. Una temporada tiene fechas de liga, copas
+          y finales, y saber que despues del lunes vienen dos mas cambia como se
+          lee la cuenta regresiva.
+
+          El campo viejo se lee y entra a la lista: una copia guardada de antes
+          tiene que seguir funcionando.
+        */
+        agenda: (() => {
+          const lista = Array.isArray(d.agenda) ? d.agenda : []
+          if (!lista.length && d.proximo) lista.push(d.proximo)
+          return lista
+            .filter((x) => x && x.nombre && x.fecha)
+            .sort((a, b) => a.fecha.localeCompare(b.fecha))
+        })(),
+        // `null` y no `{}`: la diferencia entre «nunca se ha medido» y «todos
+        // los récords están en cero» es la que evita cuatro medallas falsas la
+        // primera vez que se abre con datos ya dentro.
+        records: d.records ?? null,
+        copiado: d.copiado ?? null,
+        avisoVisto: d.avisoVisto ?? null
+      }
+    } catch {
+      return { ...ESTADO_VACIO }
+    }
+  }
+
+  /*
+    Un partido de 7 sin duracion no puede afirmar sus minutos.
+
+    Los guardados antes de que existiera este campo llevan 60, 45, 30 o 15
+    porque la app se los puso, no porque el los midiera. Ese numero se descarta:
+    dejarlo seria seguir afirmando algo que salio de una premisa falsa. Los de 11
+    no se tocan, porque ahi sesenta si es el largo real.
+  */
+  /*
+    Los minutos solo valen si hay una duracion anotada.
+
+    Los partidos guardados antes llevan 60, 45, 30 o 15 porque la app supuso el
+    largo, no porque el lo midiera — y esa suposicion resulto falsa en los dos
+    formatos: hay ligas de 11 que se juegan en dos tiempos de veinte. Cualquier
+    minutaje sin duracion detras se descarta.
+
+    El resto del partido no se toca. Poniendole la duracion en la lista, la ficha
+    vuelve a calcular sola.
+  */
+  function aDatoLimpio(x) {
+    if (typeof x.duracion !== 'number' && typeof x.minutos === 'number') {
+      return { ...x, minutos: null }
+    }
+    return x
+  }
+
+  function guardar() {
+    try {
+      localStorage.setItem(CLAVE, JSON.stringify(estado))
+      avisoEspacio(null)
+      return true
+    } catch {
+      // Decirlo en el momento y no en silencio: lo que acaba de anotar no está
+      // guardado, y esa es justo la información que no puede faltarle.
+      avisoEspacio(
+        'No pude guardar en este teléfono. Lo que anotes ahora se pierde al cerrar. ' +
+          'Copia tus datos desde «Mis datos» y ábrelo en otro navegador.'
+      )
+      return false
+    }
+  }
+
+  function avisoEspacio(texto) {
+    const caja = document.getElementById('aviso-espacio')
+    caja.textContent = texto ?? ''
+    caja.hidden = !texto
+  }
+
+  // ---------- fechas, siempre locales ----------
+
+  /* Nunca toISOString: convierte a UTC y en Chile te corre el día. */
+  function iso(fecha) {
+    const p = (n) => String(n).padStart(2, '0')
+    return `${fecha.getFullYear()}-${p(fecha.getMonth() + 1)}-${p(fecha.getDate())}`
+  }
+
+  const hoy = () => iso(new Date())
+
+  function desdeIso(s) {
+    const [a, m, d] = s.split('-').map(Number)
+    return new Date(a, m - 1, d)
+  }
+
+  /* El lunes de la semana de una fecha. La semana parte el lunes acá. */
+  function lunesDe(fecha) {
+    const d = new Date(fecha)
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    return iso(d)
+  }
+
+  const FORMATO_LARGO = new Intl.DateTimeFormat('es-CL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  })
+
+  const enPalabras = (s) => FORMATO_LARGO.format(desdeIso(s)).replace(',', '')
+
+  // ---------- entrenamientos ----------
+
+  const entrenoHoy = () => estado.entrenamientos.some((e) => e.fecha === hoy())
+  const deHoy = () => estado.entrenamientos.find((e) => e.fecha === hoy())
+
+  /*
+    Marcar o desmarcar un día cualquiera, no solo hoy.
+
+    Antes solo sabía de hoy, y eso era un agujero de verdad: entrenando tres
+    veces por semana, que se te pase un martes y lo recuerdes el jueves pasa
+    seguro — y ese entrenamiento se perdía para siempre sin forma de arreglarlo.
+  */
+  function alternarDia(fecha) {
+    const tiene = estado.entrenamientos.some((e) => e.fecha === fecha)
+    estado.entrenamientos = tiene
+      ? estado.entrenamientos.filter((x) => x.fecha !== fecha)
+      : [...estado.entrenamientos, { fecha }]
+    guardar()
+    pintar()
+  }
+
+  const alternarHoy = () => alternarDia(hoy())
+
+  const deEstaSemana = () => {
+    const lunes = lunesDe(new Date())
+    return estado.entrenamientos.filter((e) => lunesDe(desdeIso(e.fecha)) === lunes).length
+  }
+
+  // ---------- temporada ----------
+
+  function totales() {
+    const partidos = estado.dias.flatMap((d) => d.partidos)
+    /*
+      Los goles de partido y los de entrenamiento se cuentan aparte.
+
+      Antes los sumaba juntos, y estaba mal: tres goles en un picadito del
+      martes no son tres goles en una final. Mezclarlos hace que el número
+      grande deje de significar nada, y el número grande es justo el que uno
+      mira. El oficial manda; lo del entrenamiento va al lado, dicho.
+    */
+    const suma = (lista, campo) =>
+      lista.reduce((n, x) => n + (typeof x[campo] === 'number' ? x[campo] : 0), 0)
+    return {
+      entrenamientos: estado.entrenamientos.length,
+      partidos: partidos.length,
+      goles: suma(partidos, 'goles'),
+      asistencias: suma(partidos, 'asistencias'),
+      golesEntreno: suma(estado.entrenamientos, 'goles'),
+      asistEntreno: suma(estado.entrenamientos, 'asistencias'),
+      minutos: suma(partidos, 'minutos'),
+      ganados: partidos.filter((p) => resultado(p) === 'g').length
+    }
+  }
+
+  /*
+    El resultado, con los penales dentro.
+
+    En hockey una eliminatoria empatada se define por penales, y ese partido no
+    es un empate: lo ganaste o lo perdiste. Con el marcador solo, una final
+    ganada 2-2 en penales aparecía como empate — y en las finales que vienen eso
+    habría contado mal justo los partidos que más importan.
+
+    Vive en una sola función para que la lista, los totales, la ficha del rival
+    y la lámina digan todos lo mismo.
+  */
+  const resultado = (p) =>
+    p.nuestros > p.suyos
+      ? 'g'
+      : p.nuestros < p.suyos
+        ? 'p'
+        : p.penales === 'g'
+          ? 'g'
+          : p.penales === 'p'
+            ? 'p'
+            : 'e'
+
+  const seFueAPenales = (p) => p.nuestros === p.suyos && Boolean(p.penales)
+
+  // ---------- pintar ----------
+
+  function pintar() {
+    const hecho = entrenoHoy()
+    const pelota = document.getElementById('btn-entrene')
+    pelota.dataset.hecho = hecho ? 'si' : 'no'
+    pelota.innerHTML = hecho ? '<span class="tic">&#10003;</span>' : 'Entrené<br>hoy'
+    pelota.setAttribute('aria-label', hecho ? 'Ya marcaste hoy' : 'Marcar que entrenaste hoy')
+
+    document.getElementById('titular-hoy').textContent = hecho ? 'Listo por hoy' : '¿Entrenaste hoy?'
+    document.getElementById('sub-hoy').textContent = hecho
+      ? enPalabras(hoy())
+      : 'Un toque y queda. Nada más que llenar.'
+    document.getElementById('btn-deshacer').hidden = !hecho
+    document.getElementById('btn-detalle-entreno').hidden = !hecho
+
+    // Lo anotado del entrenamiento se muestra ahí mismo: si no se ve, no hay
+    // forma de saber que quedó guardado, y se anota dos veces.
+    const e = deHoy()
+    const anotado = e
+      ? [
+          e.goles ? `${e.goles} gol${e.goles === 1 ? '' : 'es'}` : null,
+          e.asistencias ? `${e.asistencias} asistencia${e.asistencias === 1 ? '' : 's'}` : null
+        ].filter(Boolean)
+      : []
+    const cajaDetalle = document.getElementById('detalle-entreno')
+    cajaDetalle.hidden = anotado.length === 0
+    cajaDetalle.textContent = anotado.join(' · ')
+    document.getElementById('btn-detalle-entreno').textContent =
+      anotado.length ? 'Cambiar' : 'Agregar goles'
+
+    const semana = deEstaSemana()
+    const ranuras = document.getElementById('ranuras')
+    ranuras.innerHTML = ''
+    for (let i = 0; i < estado.meta; i++) {
+      const r = document.createElement('span')
+      r.className = 'ranura'
+      r.dataset.llena = i < semana ? 'si' : 'no'
+      ranuras.append(r)
+    }
+    const extra = Math.max(0, semana - estado.meta)
+    document.getElementById('cuenta-semana').textContent =
+      `${semana} de ${estado.meta}` + (extra ? ` (+${extra})` : '')
+
+    const t = totales()
+    // El tercer elemento es la nota chica: lo del entrenamiento, que existe pero
+    // no compite con la cifra oficial.
+    document.getElementById('resumen').innerHTML = [
+      ['Entrenos', t.entrenamientos, '', ''],
+      ['Partidos', t.partidos, '', ''],
+      ['Racha', racha() + ' sem', '', ''],
+      ['Goles', t.goles, 'gol', t.golesEntreno ? `+${t.golesEntreno} entren.` : ''],
+      ['Asist.', t.asistencias, '', t.asistEntreno ? `+${t.asistEntreno} entren.` : ''],
+      ['Minutos', t.minutos, '', '']
+    ]
+      .map(
+        ([r, n, tono, nota]) =>
+          `<div class="dato"${tono ? ` data-tono="${tono}"` : ''}>` +
+          `<span class="cifra">${n}</span><span class="rotulo">${r}</span>` +
+          (nota ? `<span class="nota-entreno">${nota}</span>` : '') +
+          `</div>`
+      )
+      .join('')
+
+    pintarProximo()
+    pintarNivel()
+    pintarLogros()
+    pintarMapa()
+    pintarAvisoCopia()
+    pintarRecords()
+    pintarGrafico()
+    pintarMapaD()
+    pintarRivales()
+    pintarDias()
+
+    // Al final y no al principio: la medalla tapa la pantalla, y tiene que
+    // aparecer sobre el estado ya actualizado para que al cerrarla se vea el
+    // punto recién pintado detrás.
+    // Los récords van con los logros a la misma cola: si un partido te da las
+    // dos cosas, se ven una tras otra y no una encima de la otra.
+    const nuevos = revisarLogros()
+    const batidos = revisarRecords()
+    if (nuevos.length) pintarLogros()
+    if (nuevos.length || batidos.length) {
+      pintarRecords()
+      celebrar([...nuevos, ...batidos])
+    }
+  }
+
+  function pintarDias() {
+    const caja = document.getElementById('dias')
+    if (estado.dias.length === 0) {
+      caja.innerHTML =
+        '<p class="vacio">Todavía no hay partidos.<br>Agrega el primero cuando juegues.</p>'
+      return
+    }
+
+    // Lo más nuevo arriba: en temporada, lo que uno viene a mirar es lo último.
+    const ordenados = [...estado.dias].sort((a, b) => b.fecha.localeCompare(a.fecha))
+
+    caja.innerHTML = ordenados
+      .map((dia) => {
+        const filas = dia.partidos
+          .map(
+            (p, i) =>
+              `<button class="partido" type="button" data-r="${resultado(p)}"` +
+              ` data-dia="${dia.fecha}|${escapar(dia.torneo)}" data-i="${i}"` +
+              ` aria-label="Editar ${escapar(p.rival)}">` +
+              `<span class="rival">${escapar(p.rival)}</span>` +
+              `<span class="marcador" data-r="${resultado(p)}">${p.nuestros}–${p.suyos}` +
+              (seFueAPenales(p) ? `<span class="marca-penales">p</span>` : '') +
+              ((p.formato ?? 11) === 7 ? `<span class="formato-7">7</span>` : '') +
+              `</span>` +
+              `<span class="goles-mios" data-cero="${p.goles === 0 ? 'si' : 'no'}">` +
+              `${p.goles} ${p.goles === 1 ? 'gol' : 'goles'}</span>` +
+              `</button>`
+          )
+          .join('')
+        return (
+          `<article class="dia">` +
+          `<header class="dia-cabeza">` +
+          `<span class="nombre">${escapar(dia.torneo)}</span>` +
+          `<span class="fecha">${enPalabras(dia.fecha)}</span>` +
+          `</header>${filas}</article>`
+        )
+      })
+      .join('')
+  }
+
+  const escapar = (s) =>
+    String(s).replace(
+      /[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+    )
+
+  // ---------- la hoja de registro ----------
+
+  function abrirPartido() {
+    const ultimo = [...estado.dias].sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+    const asi = comoSeJuega(ultimo?.torneo, 11)
+    borrador = {
+      asistencias: 0,
+      minutos: null,
+      duracion: asi.duracion,
+      formato: 11,
+      periodos: asi.periodos,
+      /*
+        Lo de arriba lo sugirio la app mirando el torneo anterior; no lo eligio
+        el. La diferencia importa: al cambiar de formato hay que volver a
+        sugerir, pero nunca pisar lo que el ya toco.
+
+        Sin esto, pasar de «De 11» a «De 7» se quedaba con los 40 minutos de la
+        liga de once. Un numero que puso la app, mostrado como si lo hubiera
+        puesto el — el mismo error que ya habia arreglado dos veces.
+      */
+      eligio: { periodos: false, duracion: false },
+      penales: null,
+      fecha: hoy(),
+      // El torneo se hereda del último día: en una fecha juegas tres partidos
+      // seguidos y volver a escribir «Liga» cada vez es trabajo inventado.
+      torneo: ultimo?.torneo ?? '',
+      rival: '',
+      nuestros: 0,
+      suyos: 0,
+      goles: 0,
+      sensacion: 0
+    }
+    pintarHoja()
+    document.getElementById('telon').hidden = false
+    document.getElementById('rival').focus()
+  }
+
+  function pintarHoja() {
+    const rivales = rivalesConocidos()
+    const torneos = [...new Set(estado.dias.map((d) => d.torneo))]
+
+    document.getElementById('hoja-registro').innerHTML = `
+      <h2 id="titulo-hoja">${borrador.editando ? 'Editar partido' : 'Nuevo partido'}</h2>
+
+      <div class="campo">
+        <label class="rotulo" for="rival">Rival</label>
+        ${
+          rivales.length
+            ? `<div class="chips-rival" id="chips-rival">` +
+              rivales
+                .slice(0, 8)
+                .map(
+                  (r) =>
+                    `<button type="button" data-rival="${escapar(r)}" aria-pressed="${
+                      claveRival(borrador.rival ?? '') === claveRival(r)
+                    }">${escapar(r)}</button>`
+                )
+                .join('') +
+              `</div>`
+            : ''
+        }
+        <input id="rival" type="text" autocomplete="off"
+               placeholder="${rivales.length ? 'O escribe uno nuevo' : 'Nombre del club'}"
+               value="${escapar(borrador.rival)}">
+      </div>
+
+      <div class="marcador-doble">
+        <div class="campo">
+          <span class="mini-rotulo">Nosotros</span>
+          ${contador('nuestros', borrador.nuestros)}
+        </div>
+        <span class="guion">–</span>
+        <div class="campo">
+          <span class="mini-rotulo">Ellos</span>
+          ${contador('suyos', borrador.suyos)}
+        </div>
+      </div>
+
+      <div class="campo" id="campo-penales" ${
+        borrador.nuestros === borrador.suyos ? '' : 'hidden'
+      }>
+        <label class="rotulo">¿Se definió por penales?</label>
+        <div class="fichas" id="penales">
+          ${[['g', 'Ganamos'], ['p', 'Perdimos']]
+            .map(
+              ([v, texto]) =>
+                `<button type="button" data-p="${v}" aria-pressed="${
+                  borrador.penales === v
+                }">${texto}</button>`
+            )
+            .join('')}
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Cuántos jugaban</label>
+        <div class="fichas" id="formato">
+          ${[11, 7]
+            .map(
+              (f) =>
+                `<button type="button" data-f="${f}" aria-pressed="${borrador.formato === f}">` +
+                `${FORMATOS[f]}</button>`
+            )
+            .join('')}
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Cómo se jugó</label>
+        <div class="fichas" id="estructura">
+          ${[2, 4]
+            .map(
+              (n) =>
+                `<button type="button" data-per="${n}" aria-pressed="${
+                  periodosDe(borrador) === n
+                }">${ESTRUCTURAS[n].nombre}</button>`
+            )
+            .join('')}
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Tus goles</label>
+        ${contador('goles', borrador.goles)}
+      </div>
+
+      <div class="campo" id="campo-d" ${borrador.goles > 0 ? '' : 'hidden'}>
+        <label class="rotulo">Dónde marcaste <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+        <div id="poner-d"></div>
+        <p class="detalle" id="pie-d" style="margin-top:0.4rem"></p>
+        <div id="cuando-d"></div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Tus asistencias</label>
+        ${contador('asistencias', borrador.asistencias ?? 0)}
+      </div>
+
+      <div class="campo" id="campo-duracion">
+        <label class="rotulo">Cuánto duró <span style="text-transform:none;font-weight:400">(en total)</span></label>
+        <div class="fichas" id="duracion">
+          ${DURACIONES.map(
+            (d) =>
+              `<button type="button" data-dur="${d}" aria-pressed="${
+                borrador.duracion === d
+              }">${d} min</button>`
+          ).join('')}
+          <button type="button" data-dur="otra" aria-pressed="${
+            borrador.duracion && !DURACIONES.includes(borrador.duracion)
+          }">Otra</button>
+        </div>
+        <input id="duracion-otra" type="number" min="1" max="120" class="caja-texto"
+               style="margin-top:0.4rem;font:inherit" placeholder="Minutos"
+               value="${borrador.duracion && !DURACIONES.includes(borrador.duracion) ? borrador.duracion : ''}"
+               ${borrador.duracion && !DURACIONES.includes(borrador.duracion) ? '' : 'hidden'}>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Cuánto jugaste <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+        <div class="fichas" id="minutos">
+          ${PARTES.map(
+            ([parte, texto]) =>
+              `<button type="button" data-parte="${parte}" aria-pressed="${
+                proporcionDe(borrador) === parte
+              }">${texto}</button>`
+          ).join('')}
+        </div>
+        <p class="detalle" id="pie-minutos" style="margin-top:0.4rem"></p>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Cómo jugaste</label>
+        <div class="sensacion" id="sensacion">
+          ${[1, 2, 3, 4, 5]
+            .map(
+              (n) =>
+                `<button type="button" data-n="${n}" aria-pressed="${
+                  borrador.sensacion === n
+                }">${n}</button>`
+            )
+            .join('')}
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo" for="torneo">Torneo</label>
+        <input id="torneo" type="text" list="lista-torneos" autocomplete="off"
+               placeholder="Liga, copa, amistoso" value="${escapar(borrador.torneo)}">
+        <datalist id="lista-torneos">
+          ${torneos.map((t) => `<option value="${escapar(t)}"></option>`).join('')}
+        </datalist>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo" for="fecha">Fecha</label>
+        <input id="fecha" type="date" value="${borrador.fecha}">
+      </div>
+
+      <div class="acciones">
+        <button class="boton" id="cancelar" type="button">Cancelar</button>
+        <button class="boton" data-tipo="fuerte" id="guardar-partido" type="button">Guardar</button>
+      </div>
+      ${borrador.editando ? '<button class="boton" data-tipo="callado" id="borrar-partido" type="button" style="color:var(--rojo)">Borrar este partido</button><div id="confirmar-borrado"></div>' : ''}
+    `
+    cablearHoja()
+  }
+
+  /* De los minutos guardados, cual ficha estaba puesta. */
+  function proporcionDe(x) {
+    const dur = duracionDe(x)
+    if (typeof x.minutos !== 'number' || !dur) return null
+    return PARTES.map(([p]) => p).find((p) => Math.round(p * dur) === x.minutos) ?? null
+  }
+
+  const contador = (campo, valor) => `
+    <div class="contador" data-campo="${campo}">
+      <button type="button" data-paso="-1" aria-label="Restar">−</button>
+      <output>${valor}</output>
+      <button type="button" data-paso="1" aria-label="Sumar">+</button>
+    </div>`
+
+  function cablearHoja() {
+    document.getElementById('chips-rival')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      // Se copia la forma exacta que ya estaba guardada, no una version
+      // «arreglada»: asi el nombre nunca se bifurca.
+      const campo = document.getElementById('rival')
+      const mismo = claveRival(campo.value) === claveRival(b.dataset.rival)
+      campo.value = mismo ? '' : b.dataset.rival
+      document.querySelectorAll('#chips-rival button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x === b && !mismo))
+      })
+    })
+
+    cablearContadores()
+    cablearD()
+    cablearSensacion()
+    cablearFichas()
+    document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+    document.getElementById('guardar-partido').addEventListener('click', guardarPartido)
+    /*
+      Borrar un partido se pregunta; restaurar una copia se preguntaba.
+
+      Estaba al reves. Restaurar es recuperable —la copia sigue en tu WhatsApp— y
+      tenia dos pasos. Borrar un partido se lleva el rival, el marcador, los
+      goles, sus sitios en la D y sus cuartos, no hay deshacer, y se ejecutaba al
+      primer toque. La guardia estaba en la accion equivocada.
+    */
+    document.getElementById('borrar-partido')?.addEventListener('click', () => {
+      const caja = document.getElementById('confirmar-borrado')
+      const p = borrador
+      const cuenta = [
+        `${p.nuestros}–${p.suyos} contra ${escapar(p.rival)}`,
+        p.goles ? `${p.goles} ${p.goles === 1 ? 'gol tuyo' : 'goles tuyos'}` : null,
+        (p.posiciones ?? []).some((g) => typeof g.x === 'number') ? 'su sitio en la D' : null
+      ].filter(Boolean)
+      caja.innerHTML =
+        `<div class="aviso" style="margin-top:0.6rem">` +
+        `<p style="margin:0 0 0.6rem">Se va <b>${cuenta.join(' · ')}</b>. No se puede deshacer.</p>` +
+        `<div class="acciones">` +
+        `<button class="boton" id="no-borrar" type="button">No</button>` +
+        `<button class="boton" id="si-borrar" type="button"` +
+        ` style="background:var(--rojo);border-color:var(--rojo);color:#fff">Borrar</button>` +
+        `</div></div>`
+      document.getElementById('si-borrar').addEventListener('click', borrarPartido)
+      document.getElementById('no-borrar').addEventListener('click', () => (caja.innerHTML = ''))
+    })
+  }
+
+  function cablearContadores() {
+    document.querySelectorAll('.contador').forEach((c) => {
+      const campo = c.dataset.campo
+      c.querySelectorAll('button').forEach((b) => {
+        b.addEventListener('click', () => {
+          const paso = Number(b.dataset.paso)
+          borrador[campo] = Math.max(0, borrador[campo] + paso)
+          c.querySelector('output').textContent = borrador[campo]
+
+          // La pregunta de los penales solo existe con el marcador empatado, y
+          // aparece o desaparece en el momento en que lo dejas así.
+          const caja = document.getElementById('campo-penales')
+          if (caja) {
+            const empate = borrador.nuestros === borrador.suyos
+            caja.hidden = !empate
+            if (!empate) borrador.penales = null
+          }
+        })
+      })
+    })
+
+  }
+
+  function cablearSensacion() {
+    document.getElementById('sensacion')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      const n = Number(b.dataset.n)
+      // Volver a tocar el mismo lo apaga: es un dato opcional, y forzar a dejar
+      // uno puesto obliga a mentir.
+      borrador.sensacion = borrador.sensacion === n ? 0 : n
+      document
+        .querySelectorAll('#sensacion button')
+        .forEach((x) => x.setAttribute('aria-pressed', String(Number(x.dataset.n) === borrador.sensacion)))
+    })
+  }
+
+  /* Un «4º cuarto» no existe en un partido de dos tiempos. */
+  function recortarPeriodos() {
+    const n = periodosDe(borrador)
+    for (const g of borrador.posiciones ?? []) {
+      if (g.cuarto > n) delete g.cuarto
+    }
+  }
+
+  function cablearFichas() {
+    document.getElementById('penales')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      const v = b.dataset.p
+      borrador.penales = borrador.penales === v ? null : v
+      document.querySelectorAll('#penales button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x.dataset.p === borrador.penales))
+      })
+    })
+
+    document.getElementById('formato')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      borrador.formato = Number(b.dataset.f)
+      document.querySelectorAll('#formato button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.f) === borrador.formato))
+      })
+      // La Copa de 7 y la Copa de 11 son competencias distintas: al cambiar de
+      // formato se trae como se jugo ESE torneo con ESE formato. Lo que el ya
+      // haya tocado a mano manda — solo se rellena lo que sigue en blanco.
+      sugerirComoSeJuega()
+      cablearD()
+    })
+
+    /*
+      Trae como se jugo ese torneo con ese formato, sin pisar lo que el eligio.
+
+      Se llama al cambiar de formato y al escribir el torneo, porque los dos
+      cambian cual es la competencia: la Copa de 7 y la Copa de 11 no se juegan
+      igual, y «Liga Metro» tampoco se parece a «Liga Metro» hasta que termina
+      de escribirlo.
+    */
+    const sugerirComoSeJuega = () => {
+      const asi = comoSeJuega(document.getElementById('torneo')?.value, borrador.formato)
+      if (!borrador.eligio.periodos) borrador.periodos = asi.periodos
+      if (!borrador.eligio.duracion) borrador.duracion = asi.duracion
+      document.querySelectorAll('#estructura button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.per) === periodosDe(borrador)))
+      })
+      pintarDuracion()
+      // Un «4o cuarto» no existe en un partido de dos tiempos: dejarlo guardado
+      // seria peor que pedirlo de nuevo.
+      recortarPeriodos()
+      // Y los minutos se recalculan: la misma ficha vale distinto en un partido
+      // de cuarenta que en uno de doce.
+      const parte = proporcionDe(borrador)
+      borrador.minutos =
+        parte !== null && duracionDe(borrador) ? Math.round(parte * duracionDe(borrador)) : null
+      pintarMinutos()
+    }
+
+    document.getElementById('torneo')?.addEventListener('change', sugerirComoSeJuega)
+
+    /*
+      Las fichas de duracion, repintadas desde el borrador.
+
+      Un solo camino de pintado. Antes el click lo hacia a mano y el cambio de
+      formato no lo hacia en absoluto: traia la duracion recordada del torneo y
+      la dejaba invisible, con todas las fichas apagadas encima de un dato que
+      si estaba puesto.
+    */
+    const pintarDuracion = (abrirOtra = false) => {
+      const otra = document.getElementById('duracion-otra')
+      const rara = borrador.duracion !== null && !DURACIONES.includes(borrador.duracion)
+      const abierta = abrirOtra || rara
+      if (otra) {
+        otra.hidden = !abierta
+        otra.value = rara ? borrador.duracion : ''
+      }
+      document.querySelectorAll('#duracion button').forEach((x) => {
+        x.setAttribute(
+          'aria-pressed',
+          String(x.dataset.dur === 'otra' ? abierta : Number(x.dataset.dur) === borrador.duracion)
+        )
+      })
+    }
+
+    const pintarMinutos = () => {
+      const dur = duracionDe(borrador)
+      const puesta = proporcionDe(borrador)
+      document.querySelectorAll('#minutos button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.parte) === puesta))
+        // Sin duracion no hay minutos que calcular: las fichas se apagan en vez
+        // de guardar un numero sacado de la nada.
+        x.disabled = !dur
+      })
+      const pie = document.getElementById('pie-minutos')
+      if (pie) {
+        pie.textContent = !dur
+          ? 'Dime primero cuánto duró y esto se activa.'
+          : typeof borrador.minutos === 'number'
+            ? `${borrador.minutos} de ${dur} minutos.`
+            : ''
+      }
+    }
+
+    document.getElementById('minutos')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b || b.disabled) return
+      const dur = duracionDe(borrador)
+      const parte = Number(b.dataset.parte)
+      const valor = Math.round(parte * dur)
+      // Volver a tocar la misma la apaga y los minutos vuelven a «no se sabe».
+      borrador.minutos = borrador.minutos === valor ? null : valor
+      pintarMinutos()
+    })
+
+    document.getElementById('estructura')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      borrador.periodos = Number(b.dataset.per)
+      borrador.eligio.periodos = true
+      document.querySelectorAll('#estructura button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.per) === borrador.periodos))
+      })
+      recortarPeriodos()
+      cablearD()
+    })
+
+    document.getElementById('duracion')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      if (b.dataset.dur === 'otra') {
+        pintarDuracion(true)
+        document.getElementById('duracion-otra')?.focus()
+      } else {
+        const d = Number(b.dataset.dur)
+        borrador.duracion = borrador.duracion === d ? null : d
+        borrador.eligio.duracion = true
+        pintarDuracion()
+      }
+      // Cambiar la duracion cambia a cuantos minutos equivale la ficha puesta.
+      const parte = proporcionDe(borrador)
+      borrador.minutos =
+        parte !== null && duracionDe(borrador) ? Math.round(parte * duracionDe(borrador)) : null
+      pintarMinutos()
+    })
+
+    document.getElementById('duracion-otra')?.addEventListener('input', (e) => {
+      const n = Number(e.target.value)
+      borrador.duracion = n > 0 && n <= 120 ? n : null
+      borrador.eligio.duracion = true
+      pintarMinutos()
+    })
+
+    pintarMinutos()
+  }
+
+  function guardarPartido() {
+    borrador.rival = document.getElementById('rival').value.trim()
+    borrador.torneo = document.getElementById('torneo').value.trim() || 'Partido'
+    borrador.fecha = document.getElementById('fecha').value || hoy()
+
+    if (!borrador.rival) {
+      document.getElementById('rival').focus()
+      document.getElementById('rival').placeholder = 'Falta el rival'
+      return
+    }
+
+    // Los partidos del mismo día y torneo se juntan: una fecha son tres
+    // partidos, y verlos como tres tarjetas sueltas pierde que fueron el mismo
+    // día, que es justo lo que uno recuerda.
+    // Editando: se saca de donde estaba antes de volver a colocarlo, porque
+    // pudo cambiarle la fecha o el torneo y entonces cambia de dia.
+    if (borrador.editando) {
+      const e = borrador.editando
+      const viejo = estado.dias.find((d) => d.fecha === e.fecha && d.torneo === e.torneo)
+      if (viejo) {
+        viejo.partidos.splice(e.indice, 1)
+        if (viejo.partidos.length === 0) estado.dias = estado.dias.filter((d) => d !== viejo)
+      }
+    }
+
+    let dia = estado.dias.find((d) => d.fecha === borrador.fecha && d.torneo === borrador.torneo)
+    if (!dia) {
+      dia = { fecha: borrador.fecha, torneo: borrador.torneo, partidos: [] }
+      estado.dias.push(dia)
+    }
+    dia.partidos.push({
+      rival: borrador.rival,
+      nuestros: borrador.nuestros,
+      suyos: borrador.suyos,
+      goles: borrador.goles,
+      formato: borrador.formato ?? 11,
+      periodos: periodosDe(borrador),
+      duracion: borrador.duracion ?? null,
+      // Solo tiene sentido con el marcador empatado: guardarlo en un 3-1 sería
+      // un dato que contradice al otro.
+      penales: borrador.nuestros === borrador.suyos ? (borrador.penales ?? null) : null,
+      posiciones: borrador.posiciones ?? [],
+      asistencias: borrador.asistencias ?? 0,
+      // null y no cero: si no tocó las fichas, no se sabe cuánto jugó, y eso no
+      // es lo mismo que haber jugado cero minutos.
+      minutos: borrador.minutos,
+      sensacion: borrador.sensacion
+    })
+
+    guardar()
+    cerrarHoja()
+    pintar()
+  }
+
+  function cerrarHoja() {
+    document.getElementById('telon').hidden = true
+    borrador = null
+  }
+
+
+  /*
+    Editar un partido reusa la misma hoja que crearlo: dos formularios para el
+    mismo dato se separan con el tiempo, y el que se usa menos —el de editar—
+    es el que se queda atrás sin que nadie lo note.
+  */
+  function abrirEdicion(claveDia, indice) {
+    const [fecha, torneo] = claveDia.split('|')
+    const dia = estado.dias.find((d) => d.fecha === fecha && d.torneo === torneo)
+    const p = dia?.partidos[indice]
+    if (!p) return
+    // Un partido guardado trae datos que el anoto: son hechos, no sugerencias,
+    // y cambiar de formato no puede reescribirlos.
+    borrador = {
+      ...p,
+      fecha,
+      torneo,
+      eligio: { periodos: true, duracion: true },
+      editando: { fecha, torneo, indice }
+    }
+    pintarHoja()
+    document.getElementById('telon').hidden = false
+  }
+
+  function borrarPartido() {
+    const e = borrador.editando
+    const dia = estado.dias.find((d) => d.fecha === e.fecha && d.torneo === e.torneo)
+    if (!dia) return
+    dia.partidos.splice(e.indice, 1)
+    // Un dia sin partidos deja de ser un dia de competencia: si se queda, la
+    // temporada se llena de tarjetas vacias que no dicen nada.
+    if (dia.partidos.length === 0) estado.dias = estado.dias.filter((d) => d !== dia)
+    guardar()
+    cerrarHoja()
+    pintar()
+  }
+
+
+  /*
+    El detalle del entrenamiento vive detrás de un segundo toque, nunca en el
+    primero. Marcar que fuiste tiene que seguir costando un toque: en el momento
+    en que el registro exige goles y asistencias todos los días, deja de hacerse.
+  */
+  function abrirDetalleEntreno(fecha = hoy()) {
+    // Si llega algo que no es una fecha, es un error de cableado y no un caso
+    // normal: se dice en la consola en vez de salirse callado, que fue justo lo
+    // que hizo que este botón pareciera muerto sin dejar rastro.
+    if (typeof fecha !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      console.error('abrirDetalleEntreno esperaba una fecha y recibió:', fecha)
+      return
+    }
+    const actual = estado.entrenamientos.find((e) => e.fecha === fecha)
+    if (!actual) return
+    borrador = {
+      goles: actual.goles ?? 0,
+      asistencias: actual.asistencias ?? 0,
+      sensacion: actual.sensacion ?? 0,
+      entreno: true
+    }
+    document.getElementById('hoja-registro').innerHTML = `
+      <h2 id="titulo-hoja">${
+        fecha === hoy() ? 'El entrenamiento de hoy' : 'El entrenamiento del ' + enPalabras(fecha)
+      }</h2>
+      <p style="margin:0;font-size:0.9rem;color:var(--tinta-suave)">
+        Si hubo partido de entrenamiento y anotaste, ponlo acá. Todo es opcional.
+      </p>
+      <div class="campo">
+        <label class="rotulo">Tus goles</label>
+        ${contador('goles', borrador.goles)}
+      </div>
+      <div class="campo">
+        <label class="rotulo">Tus asistencias</label>
+        ${contador('asistencias', borrador.asistencias)}
+      </div>
+      <div class="campo">
+        <label class="rotulo">Cómo estuvo</label>
+        <div class="sensacion" id="sensacion">
+          ${[1, 2, 3, 4, 5]
+            .map((n) => `<button type="button" data-n="${n}" aria-pressed="${borrador.sensacion === n}">${n}</button>`)
+            .join('')}
+        </div>
+      </div>
+      <div class="acciones">
+        <button class="boton" id="cancelar" type="button">Cancelar</button>
+        <button class="boton" data-tipo="fuerte" id="guardar-entreno" type="button">Guardar</button>
+      </div>
+    `
+    cablearContadores()
+    cablearSensacion()
+    document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+    document.getElementById('guardar-entreno').addEventListener('click', () => {
+      const e = estado.entrenamientos.find((x) => x.fecha === fecha)
+      if (e) {
+        e.goles = borrador.goles
+        e.asistencias = borrador.asistencias
+        e.sensacion = borrador.sensacion
+      }
+      guardar()
+      cerrarHoja()
+      pintar()
+    })
+    document.getElementById('telon').hidden = false
+  }
+
+
+  /*
+    Poner los goles en la D. Se toca una vez por gol y no más: si ya pusiste los
+    tres que dijiste, la D deja de aceptar toques en vez de dejarte marcar
+    cuatro y que los números no cuadren con el dibujo.
+  */
+  /*
+    Una entrada por gol, siempre.
+
+    Antes `posiciones` solo tenía las que habías puesto en la D. Con el cuarto
+    de por medio eso no alcanza: un gol puede tener cuarto y no tener sitio, o
+    al revés. Se normaliza al abrir la hoja — tantas entradas como goles, cada
+    una con lo que se sepa y lo demás vacío.
+  */
+  function normalizarGoles() {
+    const lista = (borrador.posiciones ?? []).slice(0, borrador.goles)
+    while (lista.length < borrador.goles) lista.push({})
+    borrador.posiciones = lista
+  }
+
+  function cablearD() {
+    const campo = document.getElementById('campo-d')
+    if (!campo) return
+    normalizarGoles()
+
+    const redibujar = () => {
+      campo.hidden = borrador.goles === 0
+      if (borrador.goles === 0) {
+        borrador.posiciones = []
+        return
+      }
+      normalizarGoles()
+      const puestos = borrador.posiciones.filter((g) => typeof g.x === 'number')
+      const faltan = borrador.goles - puestos.length
+      document.getElementById('poner-d').innerHTML = dibujoDeLaD(puestos, { poner: faltan > 0 })
+      document.getElementById('pie-d').innerHTML =
+        faltan > 0
+          ? `Toca dónde marcaste. ${faltan === borrador.goles ? '' : `Faltan <b>${faltan}</b>.`}`
+          : `Listo. <button type="button" class="boton" data-tipo="callado" id="borrar-puntos"
+               style="padding:0 0.3rem">Empezar de nuevo</button>`
+
+      // Y el cuarto de cada uno, debajo. Opcional: un gol sin cuarto sigue
+      // siendo un gol, y obligar a ponerlo haría más lento justo el momento en
+      // que estás cansado entre partido y partido.
+      document.getElementById('cuando-d').innerHTML = borrador.posiciones
+        .map(
+          (g, k) =>
+            `<div class="gol-fila"><span>Gol ${k + 1}</span>` +
+            `<div class="fichas" data-gol="${k}">` +
+            [...Array(periodosDe(borrador)).keys()]
+              .map((i) => i + 1)
+              .map(
+                (c) =>
+                  `<button type="button" data-c="${c}" aria-pressed="${g.cuarto === c}">` +
+                  `${estructuraDe(borrador).como(c)}</button>`
+              )
+              .join('') +
+            `</div></div>`
+        )
+        .join('')
+
+      document.getElementById('svg-d').addEventListener('click', (e) => {
+        const hueco = borrador.posiciones.find((g) => typeof g.x !== 'number')
+        if (!hueco) return
+        const punto = puntoDelToque(e.currentTarget, e)
+        // Fuera de la D no se acepta: un gol de hockey no existe fuera de ahí,
+        // y aceptarlo sería guardar algo imposible.
+        if (!dentroDeLaD(punto.x, punto.y)) {
+          document.getElementById('pie-d').textContent = 'Eso está fuera de la D.'
+          return
+        }
+        hueco.x = punto.x
+        hueco.y = punto.y
+        redibujar()
+      })
+      document.getElementById('borrar-puntos')?.addEventListener('click', () => {
+        // Se borran los sitios, no los cuartos: son dos datos distintos y
+        // «empezar de nuevo» con la D no tiene por qué tirar el otro.
+        for (const g of borrador.posiciones) {
+          delete g.x
+          delete g.y
+        }
+        redibujar()
+      })
+    }
+
+    /*
+      Las escuchas de acá abajo van UNA vez por hoja, y esto lo obliga.
+
+      La primera version lo decia en un comentario y no lo obligaba: las puse
+      fuera de `redibujar` y quedo bien... hasta que `cablearD` paso a llamarse
+      tambien al cambiar la estructura. Cada cambio sumaba otra escucha, y con
+      dos, tocar un periodo ejecutaba el interruptor dos veces —lo ponia y lo
+      quitaba— y la ficha no hacia nada, sin ningun error.
+
+      `#campo-d` se vuelve a crear con cada hoja, asi que la marca se limpia
+      sola: una hoja nueva vuelve a cablear, una hoja abierta no.
+
+      El de la D no tiene el problema porque ese SVG si se vuelve a crear en
+      cada redibujado, y con el su escucha.
+    */
+    if (campo.dataset.cableado) {
+      redibujar()
+      return
+    }
+    campo.dataset.cableado = '1'
+
+    document.getElementById('cuando-d').addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      const fila = b.closest('.fichas')
+      const g = borrador.posiciones[Number(fila.dataset.gol)]
+      const c = Number(b.dataset.c)
+      // Volver a tocar el mismo lo apaga: es opcional de verdad.
+      g.cuarto = g.cuarto === c ? undefined : c
+      fila.querySelectorAll('button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(Number(x.dataset.c) === g.cuarto))
+      })
+    })
+
+    redibujar()
+    // Si cambia la cantidad de goles, la D se ajusta: subir de 2 a 3 pide otro
+    // toque, y bajar de 3 a 1 no puede dejar tres puntos dibujados.
+    document.querySelector('.contador[data-campo="goles"]')?.addEventListener('click', () => {
+      if (borrador.posiciones.length > borrador.goles) {
+        borrador.posiciones = borrador.posiciones.slice(0, borrador.goles)
+      }
+      redibujar()
+    })
+  }
+
+  // ---------- mis datos ----------
+
+  function abrirDatos() {
+    const copia = JSON.stringify(estado, null, 2)
+    const dias = diasDesde(estado.copiado)
+    document.getElementById('hoja-registro').innerHTML = `
+      <h2 id="titulo-hoja">Mis datos</h2>
+      <p style="margin:0;font-size:0.9rem;color:var(--tinta-suave)">
+        Tus datos viven solo en este teléfono y en este navegador. Si borras los
+        datos del sitio o cambias de teléfono, se van. Sacar una copia de vez en
+        cuando es lo único que los protege.
+      </p>
+      <p style="margin:0;font-size:0.85rem;color:var(--tinta-suave)">
+        Última copia: <b>${
+          dias === null ? 'nunca' : dias === 0 ? 'hoy' : `hace ${dias} ${dias === 1 ? 'día' : 'días'}`
+        }</b>
+      </p>
+
+      <textarea id="volcado" readonly rows="5" class="caja-texto">${escapar(copia)}</textarea>
+      <button class="boton" data-tipo="fuerte" id="copiar" type="button" style="width:100%">
+        Copiar y mandármela por WhatsApp
+      </button>
+
+      <hr class="separador">
+
+      <h2 style="font-size:1rem">Restaurar</h2>
+      <p style="margin:0;font-size:0.85rem;color:var(--tinta-suave)">
+        Pega acá una copia y te digo qué trae antes de tocar nada.
+      </p>
+      <textarea id="pegado" rows="3" class="caja-texto"
+                placeholder="Pega acá el texto de una copia"></textarea>
+      <p id="dice-copia" class="detalle" style="margin:0"></p>
+      <button class="boton" id="revisar-pegado" type="button" style="width:100%">Revisar</button>
+
+      <div class="acciones">
+        <button class="boton" id="cancelar" type="button">Cerrar</button>
+      </div>
+    `
+
+    document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+
+    document.getElementById('copiar').addEventListener('click', async (e) => {
+      const area = document.getElementById('volcado')
+      try {
+        await navigator.clipboard.writeText(copia)
+        e.target.textContent = 'Copiado — ahora pégala donde la guardes'
+        // La fecha se anota SOLO si de verdad se copio. Antes se anotaba
+        // tambien en el catch, asi que la app podia decir «ultima copia: hoy»
+        // de una copia que nunca salio del recuadro.
+        estado.copiado = new Date().toISOString()
+        estado.avisoVisto = null
+        guardar()
+        pintarAvisoCopia()
+      } catch {
+        // Sin portapapeles, seleccionar el texto deja el trabajo a un toque. Pero
+        // eso no es una copia hecha, y no se anota como tal.
+        area.select()
+        e.target.textContent = 'Selecciónala y cópiala a mano'
+      }
+    })
+
+    document.getElementById('revisar-pegado').addEventListener('click', () => {
+      const dice = document.getElementById('dice-copia')
+      const r = restaurarDesde(document.getElementById('pegado').value.trim())
+      if (!r.ok) {
+        dice.innerHTML = `<b style="color:var(--rojo)">${r.porque}</b>`
+        return
+      }
+      dice.innerHTML =
+        `Esa copia trae <b>${r.entrenos}</b> ${r.entrenos === 1 ? 'entrenamiento' : 'entrenamientos'} ` +
+        `y <b>${r.partidos}</b> ${r.partidos === 1 ? 'partido' : 'partidos'}. ` +
+        `Reemplaza todo lo que tienes ahora.` +
+        `<br><button class="boton" id="confirmar-restaurar" type="button"
+           style="margin-top:0.5rem;background:var(--rojo);border-color:var(--rojo);color:#fff">
+           Sí, reemplazar</button>`
+      document.getElementById('confirmar-restaurar').addEventListener('click', () => {
+        try {
+          localStorage.setItem(CLAVE, JSON.stringify(r.datos))
+        } catch {
+          // Antes esto se tragaba el error y volvia a leer, asi que repintaba
+          // los datos VIEJOS y parecia que habia funcionado. Una restauracion
+          // que falla en silencio es la peor forma de perder una temporada.
+          dice.innerHTML =
+            `<b style="color:var(--rojo)">No se pudo guardar. Tus datos de acá siguen intactos ` +
+            `y la copia sigue en el recuadro.</b>`
+          return
+        }
+        estado = leer()
+        cerrarHoja()
+        pintar()
+      })
+    })
+
+    document.getElementById('telon').hidden = false
+  }
+
+  // ---------- nivel y racha ----------
+
+  /*
+    Los saltos crecen de a tres: el nivel 2 llega a las 3 sesiones —una semana—
+    y el 5 a las 30. Un primer nivel caro es una app que en la semana uno no te
+    devuelve nada, y la semana uno es justo cuando decides si la sigues usando.
+  */
+  const umbral = (n) => (3 * (n - 1) * n) / 2
+
+  function nivelDe(sesiones) {
+    let n = 1
+    while (umbral(n + 1) <= sesiones) n++
+    return n
+  }
+
+  const sesiones = () =>
+    estado.entrenamientos.length + estado.dias.reduce((t, d) => t + d.partidos.length, 0)
+
+  /*
+    Semanas seguidas cumpliendo la meta, contando hacia atrás desde la última
+    semana cerrada. La semana en curso solo suma si ya la cumpliste: si no, aún
+    puede cumplirse, y romperte la racha un miércoles sería mentir.
+  */
+  function racha() {
+    const porSemana = new Map()
+    for (const e of estado.entrenamientos) {
+      const l = lunesDe(desdeIso(e.fecha))
+      porSemana.set(l, (porSemana.get(l) ?? 0) + 1)
+    }
+    const cursor = desdeIso(lunesDe(new Date()))
+    if ((porSemana.get(iso(cursor)) ?? 0) < estado.meta) cursor.setDate(cursor.getDate() - 7)
+    let n = 0
+    while ((porSemana.get(iso(cursor)) ?? 0) >= estado.meta) {
+      n++
+      cursor.setDate(cursor.getDate() - 7)
+    }
+    return n
+  }
+
+  function pintarNivel() {
+    const total = sesiones()
+    const n = nivelDe(total)
+    const base = umbral(n)
+    const techo = umbral(n + 1)
+    const faltan = techo - total
+    const avance = Math.round(((total - base) / (techo - base)) * 100)
+
+    document.getElementById('nivel').innerHTML =
+      `<div class="nivel-numero"><span class="cifra">${n}</span></div>` +
+      `<div class="nivel-texto">` +
+      `<span class="rotulo">Nivel ${n}</span>` +
+      `<p class="que-falta">${
+        total === 0
+          ? 'Marca tu primer entrenamiento y arrancas.'
+          : `${faltan} ${faltan === 1 ? 'sesión' : 'sesiones'} para el nivel ${n + 1}.`
+      }</p>` +
+      `<div class="medidor"><span style="width:${avance}%"></span></div>` +
+      `</div>`
+  }
+
+  // ---------- mapa de temporada ----------
+
+  const SEMANAS_A_LA_VISTA = 8
+
+  /* Qué hubo cada día, resuelto una vez para no recorrer todo por celda. */
+  function porDia() {
+    const mapa = new Map()
+    for (const e of estado.entrenamientos) {
+      mapa.set(e.fecha, { ...(mapa.get(e.fecha) ?? {}), entreno: e })
+    }
+    for (const dia of estado.dias) {
+      const previo = mapa.get(dia.fecha) ?? {}
+      mapa.set(dia.fecha, {
+        ...previo,
+        partidos: [
+          ...(previo.partidos ?? []),
+          ...dia.partidos.map((x) => ({ ...x, torneo: dia.torneo }))
+        ]
+      })
+    }
+    return mapa
+  }
+
+  function pintarMapa() {
+    const datos = porDia()
+    const hoyIso = hoy()
+    const lunesActual = desdeIso(lunesDe(new Date()))
+    const filas = []
+
+    for (let w = SEMANAS_A_LA_VISTA - 1; w >= 0; w--) {
+      const inicio = new Date(lunesActual)
+      inicio.setDate(inicio.getDate() - w * 7)
+      const celdas = []
+      for (let d = 0; d < 7; d++) {
+        const dia = new Date(inicio)
+        dia.setDate(dia.getDate() + d)
+        const clave = iso(dia)
+        const tiene = datos.get(clave)
+        const que = !tiene
+          ? 'nada'
+          : tiene.entreno && tiene.partidos
+            ? 'ambos'
+            : tiene.partidos
+              ? 'partido'
+              : 'entreno'
+        const futuro = clave > hoyIso
+        const dice = que === 'nada' ? (futuro ? 'aún no llega' : 'sin nada') : que
+        celdas.push(
+          `<button class="celda" type="button" data-fecha="${clave}" data-que="${que}"` +
+            ` data-hoy="${clave === hoyIso ? 'si' : 'no'}" data-futuro="${futuro ? 'si' : 'no'}"` +
+            ` aria-pressed="false" aria-label="${enPalabras(clave)}: ${dice}"` +
+            `${futuro ? ' disabled' : ''}></button>`
+        )
+      }
+      filas.push(`<div class="mapa-fila">${celdas.join('')}</div>`)
+    }
+
+    document.getElementById('mapa').innerHTML =
+      '<div class="mapa-dias">' +
+      ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d) => `<span>${d}</span>`).join('') +
+      '</div>' +
+      filas.join('')
+  }
+
+  function contarDia(fecha) {
+    const d = porDia().get(fecha)
+    if (!d) return `<b>${enPalabras(fecha)}</b> — sin nada.`
+    const partes = []
+    if (d.entreno) {
+      const e = d.entreno
+      const extra = [
+        e.goles ? `${e.goles} gol${e.goles === 1 ? '' : 'es'}` : null,
+        e.asistencias ? `${e.asistencias} asist.` : null,
+        e.sensacion ? `${e.sensacion}/5` : null
+      ].filter(Boolean)
+      partes.push('entrenamiento' + (extra.length ? ` (${extra.join(', ')})` : ''))
+    }
+    for (const x of d.partidos ?? []) {
+      const mios = x.goles ? ` (${x.goles} tuyo${x.goles === 1 ? '' : 's'})` : ''
+      const como = x.sensacion ? `, ${x.sensacion}/5` : ''
+      partes.push(`${escapar(x.rival)} ${x.nuestros}–${x.suyos}${mios}${como}`)
+    }
+    return `<b>${enPalabras(fecha)}</b> — ${partes.join(' · ')}`
+  }
+
+  // ---------- goles por partido ----------
+
+  const BARRAS_A_LA_VISTA = 14
+
+  function todosLosPartidos() {
+    return estado.dias
+      .flatMap((d) => d.partidos.map((x) => ({ ...x, fecha: d.fecha, torneo: d.torneo })))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  }
+
+  // ---------- logros ----------
+
+  /*
+    Doce cosas por desbloquear, y varias ocultas hasta que caen.
+    Las ocultas son las que hacen que valga la pena mirar: una cuadrícula donde
+    ya sabes todo lo que falta es una lista de tareas. Una donde tres dicen «?»
+    es algo que quieres descubrir.
+
+    Ninguno pide anotar nada nuevo: todos se calculan de lo que ya guardas. Un
+    logro que exige llenar un campo extra es una tarea disfrazada de premio.
+  */
+  const LOGROS = [
+    { id: 'primer-toque', marca: '1', nombre: 'Primer toque', pista: 'Marca un entrenamiento',
+      gano: (r) => r.entrenamientos >= 1 },
+    { id: 'semana-perfecta', marca: '✓', nombre: 'Semana perfecta', pista: 'Cumple tu meta una semana',
+      gano: (r) => r.semanasPerfectas >= 1 },
+    { id: 'debut', marca: '1º', nombre: 'Debut', pista: 'Registra tu primer partido',
+      gano: (r) => r.partidos.length >= 1 },
+    { id: 'anotaste', marca: 'G', nombre: 'Anotaste', pista: 'Marca tu primer gol',
+      gano: (r) => r.golesTotal >= 1 },
+    { id: 'tres-seguidas', marca: '3×', nombre: 'Tres seguidas', pista: 'Tres semanas perfectas al hilo',
+      gano: (r) => r.rachaMax >= 3 },
+    { id: 'doblete', marca: '2', nombre: 'Doblete', pista: 'Dos goles en un partido',
+      gano: (r) => r.maxGoles >= 2 },
+    { id: 'fecha-completa', marca: '3', nombre: 'Fecha completa', pista: 'Tres partidos el mismo día',
+      gano: (r) => r.maxPartidosEnDia >= 3 },
+    { id: 'asistidor', marca: 'A', nombre: 'Asistidor', pista: 'Da tu primera asistencia',
+      gano: (r) => r.asistTotal >= 1 },
+    { id: 'diez', marca: '10', nombre: 'Diez', pista: 'Diez goles en la temporada',
+      gano: (r) => r.golesTotal >= 10 },
+    { id: 'mes-entero', marca: '4×', nombre: 'Mes entero', pista: 'Cuatro semanas perfectas al hilo',
+      gano: (r) => r.rachaMax >= 4 },
+
+    // Ocultos: aparecen como «?» hasta que caen.
+    { id: 'hat-trick', marca: 'HT', nombre: 'Hat-trick', pista: 'Tres goles tuyos en un partido',
+      oculto: true, gano: (r) => r.maxGoles >= 3 },
+    { id: 'valla-invicta', marca: '0', nombre: 'Valla invicta', pista: 'Ganar sin recibir goles',
+      oculto: true, gano: (r) => r.partidos.some((x) => x.suyos === 0 && x.nuestros > 0) },
+    { id: 'la-d', marca: '25', nombre: 'La D', pista: 'Veinticinco goles en la temporada',
+      oculto: true, gano: (r) => r.golesTotal >= 25 },
+    { id: 'doble-aporte', marca: 'G+A', nombre: 'Gol y pase', pista: 'Gol y asistencia en el mismo partido',
+      oculto: true, gano: (r) => r.partidos.some((x) => x.goles >= 1 && (x.asistencias ?? 0) >= 1) },
+    { id: 'noventa', marca: '90', nombre: 'Noventa', pista: 'Noventa minutos jugados en total',
+      oculto: true, gano: (r) => r.minutosTotal >= 90 },
+    { id: 'cartografo', marca: '5', nombre: 'Cartógrafo', pista: 'Ubica cinco goles en la D',
+      oculto: true, gano: (r) => r.golesUbicados >= 5 },
+    { id: 'martes', marca: '10', nombre: 'El del martes', pista: 'Diez goles en entrenamientos',
+      oculto: true, gano: (r) => r.golesEntreno >= 10 }
+  ]
+
+  /* El lunes de la semana siguiente, contando dias y no milisegundos. */
+  function lunesSiguiente(lunesIso) {
+    const d = desdeIso(lunesIso)
+    d.setDate(d.getDate() + 7)
+    return iso(d)
+  }
+
+  /* Todo lo que los logros necesitan saber, calculado una vez. */
+  function resumenLogros() {
+    const partidos = todosLosPartidos()
+    const porFecha = new Map()
+    for (const x of partidos) porFecha.set(x.fecha, (porFecha.get(x.fecha) ?? 0) + 1)
+
+    const semanas = new Map()
+    for (const e of estado.entrenamientos) {
+      const l = lunesDe(desdeIso(e.fecha))
+      semanas.set(l, (semanas.get(l) ?? 0) + 1)
+    }
+    const perfectas = [...semanas.entries()].filter(([, n]) => n >= estado.meta).map(([l]) => l).sort()
+
+    // La racha más larga de la temporada, no la actual: un logro que se pierde
+    // cuando se corta la racha no es un logro, es un castigo con retraso.
+    let mejor = 0
+    let corriendo = 0
+    let anterior = null
+    for (const l of perfectas) {
+      // Por fecha y no por milisegundos: en Chile los relojes se adelantan la
+      // primera semana de septiembre y esa semana dura 167 horas. Restando
+      // milisegundos deja de parecer consecutiva y la racha se corta sola,
+      // sin ningun error, justo en plena temporada.
+      const seguida = anterior !== null && lunesSiguiente(anterior) === l
+      corriendo = seguida ? corriendo + 1 : 1
+      mejor = Math.max(mejor, corriendo)
+      anterior = l
+    }
+
+    return {
+      entrenamientos: estado.entrenamientos.length,
+      partidos,
+      // Solo lo oficial. Endurecer el criterio nunca quita un logro ya
+      // conseguido —una vez ganado se guarda y no se vuelve a revisar—, así que
+      // esto solo afecta a los que vengan, que es lo correcto.
+      golesTotal: partidos.reduce((n, x) => n + x.goles, 0),
+      asistTotal: partidos.reduce((n, x) => n + (x.asistencias ?? 0), 0),
+      golesEntreno: estado.entrenamientos.reduce((n, e) => n + (e.goles ?? 0), 0),
+      minutosTotal: partidos.reduce((n, x) => n + (typeof x.minutos === 'number' ? x.minutos : 0), 0),
+      golesUbicados: partidos.reduce((n, x) => n + (x.posiciones?.length ?? 0), 0),
+      maxGoles: Math.max(0, ...partidos.map((x) => x.goles)),
+      maxPartidosEnDia: Math.max(0, ...porFecha.values()),
+      semanasPerfectas: perfectas.length,
+      rachaMax: mejor
+    }
+  }
+
+  /*
+    Devuelve los que se acaban de ganar. La fecha se guarda además del sí/no
+    porque más adelante vale poder decir «esto lo conseguiste en septiembre», y
+    un booleano no se puede convertir en fecha después.
+  */
+  function revisarLogros() {
+    const r = resumenLogros()
+    const nuevos = []
+    for (const l of LOGROS) {
+      if (!estado.logros[l.id] && l.gano(r)) {
+        estado.logros[l.id] = hoy()
+        nuevos.push(l)
+      }
+    }
+    if (nuevos.length) guardar()
+    return nuevos
+  }
+
+  function pintarLogros() {
+    const tengo = estado.logros
+    document.getElementById('cuenta-logros').textContent =
+      `${Object.keys(tengo).length} de ${LOGROS.length}`
+
+    document.getElementById('logros').innerHTML = LOGROS.map((l) => {
+      const gano = Boolean(tengo[l.id])
+      const secreto = l.oculto && !gano
+      // Un <button> y no un <div>: la pista vivia solo en `title`, y en un
+      // telefono no hay raton que se pose encima. Trece medallas con una regla
+      // que no habia forma de leer.
+      return (
+        `<button type="button" class="logro" data-tengo="${gano ? 'si' : 'no'}"` +
+        ` data-id="${l.id}">` +
+        `<div class="escudo">${secreto ? '?' : l.marca}</div>` +
+        `<span class="nombre">${secreto ? 'Secreto' : escapar(l.nombre)}</span></button>`
+      )
+    }).join('')
+  }
+
+  function contarLogro(id) {
+    const l = LOGROS.find((x) => x.id === id)
+    const cuando = estado.logros[id]
+    const secreto = l.oculto && !cuando
+    document.getElementById('detalle-logro').innerHTML = secreto
+      ? `<b>Secreto.</b> Se descubre consiguiéndolo.`
+      : `<b>${escapar(l.nombre)}</b> — ${escapar(l.pista)}` +
+        (cuando ? ` · lo conseguiste el ${enPalabras(cuando)}` : '')
+  }
+
+  // ---------- celebración ----------
+
+  let cola = []
+
+  function celebrar(nuevos) {
+    cola = [...cola, ...nuevos]
+    if (cola.length) siguienteMedalla()
+  }
+
+  function siguienteMedalla() {
+    const l = cola[0]
+    if (!l) {
+      document.getElementById('fiesta').hidden = true
+      return
+    }
+    document.getElementById('medalla').innerHTML =
+      `<div class="escudo-grande">${l.marca}</div>` +
+      `<span class="desbloqueado">Desbloqueado</span>` +
+      `<h3 id="titulo-medalla">${escapar(l.nombre)}</h3>` +
+      `<p>${escapar(l.pista)}</p>` +
+      `<button class="boton" id="seguir" type="button">` +
+      `${cola.length > 1 ? `Siguiente (${cola.length - 1} más)` : 'Seguir'}</button>`
+    document.getElementById('fiesta').hidden = false
+    document.getElementById('seguir').addEventListener('click', () => {
+      cola.shift()
+      siguienteMedalla()
+    })
+  }
+
+  // ---------- lo próximo ----------
+
+  /* Lo que aún no ha pasado, en orden. Hoy cuenta como pendiente. */
+  const loQueViene = () => estado.agenda.filter((x) => x.fecha >= hoy())
+
+  function pintarProximo() {
+    const caja = document.getElementById('proximo')
+    const vienen = loQueViene()
+    const pr = vienen[0]
+
+    if (!pr) {
+      caja.innerHTML =
+        `<span class="que">Nada agendado.</span>` +
+        `<button type="button" id="poner-proximo">Poner lo próximo</button>`
+    } else {
+      const faltan = daysBetweenIso(hoy(), pr.fecha)
+      const cuando = faltan > 1 ? `Faltan ${faltan} días` : faltan === 1 ? 'Es mañana' : 'Es hoy'
+      // Lo que viene después no lleva cuenta atrás propia: la cifra grande es
+      // una sola, y dos números compitiendo no dejan ver ninguno.
+      const detras = vienen.length - 1
+      caja.innerHTML =
+        `<span class="dias-faltan">${faltan}</span>` +
+        `<span class="que"><b>${escapar(pr.nombre)}</b><br>${cuando}` +
+        (detras ? ` · y ${detras} más después` : '') +
+        `</span>` +
+        `<button type="button" id="poner-proximo">Ver</button>`
+    }
+    document.getElementById('poner-proximo').addEventListener('click', abrirProximo)
+  }
+
+  const daysBetweenIso = (a, b) =>
+    Math.round((desdeIso(b) - desdeIso(a)) / 86400000)
+
+  /*
+    El calendario de la temporada.
+
+    Lo que ya pasó no se borra solo: se queda en la lista, apagado, hasta que lo
+    quites. Que algo desaparezca de tu calendario sin que tú lo toques es la
+    clase de cosa que te hace dudar de si lo llegaste a anotar.
+  */
+  function abrirProximo() {
+    const filas = estado.agenda
+      .map((x, i) => {
+        const faltan = daysBetweenIso(hoy(), x.fecha)
+        const pasado = faltan < 0
+        return (
+          `<div class="fila-agenda" data-pasado="${pasado ? 'si' : 'no'}">` +
+          `<span><b>${escapar(x.nombre)}</b>` +
+          `<span class="cuando">${enPalabras(x.fecha)} · ${
+            pasado ? 'ya pasó' : faltan === 0 ? 'hoy' : faltan === 1 ? 'mañana' : `en ${faltan} días`
+          }</span></span>` +
+          `<button type="button" class="boton" data-tipo="callado" data-quitar="${i}"` +
+          ` style="padding:0.3rem 0.5rem">quitar</button></div>`
+        )
+      })
+      .join('')
+
+    document.getElementById('hoja-registro').innerHTML = `
+      <h2 id="titulo-hoja">Tu calendario</h2>
+      <p style="margin:0;font-size:0.9rem;color:var(--tinta-suave)">
+        Fechas de liga, copas, finales. La cuenta regresiva de arriba muestra la
+        más cercana.
+      </p>
+      ${filas ? `<div class="agenda">${filas}</div>` : ''}
+
+      <hr class="separador">
+
+      <div class="campo">
+        <label class="rotulo" for="pr-nombre">Qué es</label>
+        <input id="pr-nombre" type="text" autocomplete="off"
+               placeholder="Copa, final, fecha de liga" value="">
+      </div>
+      <div class="campo">
+        <label class="rotulo" for="pr-fecha">Cuándo</label>
+        <input id="pr-fecha" type="date" value="${hoy()}">
+      </div>
+      <button class="boton" data-tipo="fuerte" id="guardar-proximo" type="button"
+              style="width:100%">+ Agregar</button>
+
+      <div class="acciones">
+        <button class="boton" id="cancelar" type="button">Cerrar</button>
+      </div>
+    `
+    document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+
+    document.getElementById('guardar-proximo').addEventListener('click', () => {
+      const campo = document.getElementById('pr-nombre')
+      const nombre = campo.value.trim()
+      if (!nombre) {
+        campo.focus()
+        campo.placeholder = 'Falta el nombre'
+        return
+      }
+      estado.agenda = [
+        ...estado.agenda,
+        { nombre, fecha: document.getElementById('pr-fecha').value || hoy() }
+      ].sort((a, b) => a.fecha.localeCompare(b.fecha))
+      guardar()
+      pintar()
+      // La hoja se vuelve a dibujar en vez de cerrarse: una temporada se carga
+      // de una sentada, y cerrar después de cada fecha obliga a abrir otra vez.
+      abrirProximo()
+    })
+
+    document.querySelector('.agenda')?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-quitar]')
+      if (!b) return
+      estado.agenda = estado.agenda.filter((_, i) => i !== Number(b.dataset.quitar))
+      guardar()
+      pintar()
+      abrirProximo()
+    })
+
+    document.getElementById('telon').hidden = false
+  }
+
+
+  // ---------- los tres gráficos ----------
+
+  let vista = 'aporte'
+
+  const ALTO_GRAFICO = 96
+
+  /* Suma lo que existe y dice cuántos aportaron: si dos partidos no tienen
+     minutos, «300 minutos» sin más es una cifra que suena exacta y no lo es. */
+  const sumaConocida = (lista, campo) => {
+    const con = lista.filter((x) => typeof x[campo] === 'number')
+    return { total: con.reduce((n, x) => n + x[campo], 0), cuantos: con.length, de: lista.length }
+  }
+
+  function pintarGrafico() {
+    const caja = document.getElementById('barras')
+    const leyenda = document.getElementById('leyenda-grafico')
+    const pie = document.getElementById('detalle-goles')
+    caja.style.height = ALTO_GRAFICO + 'px'
+    caja.innerHTML = ''
+    leyenda.innerHTML = ''
+    pie.textContent = ''
+
+    if (vista === 'semanas') return graficoSemanas(caja, leyenda, pie)
+    if (vista === 'entrenos') return graficoEntrenos(caja, leyenda, pie)
+
+    const partidos = todosLosPartidos().slice(-BARRAS_A_LA_VISTA)
+    if (partidos.length === 0) {
+      caja.style.height = '52px'
+      pie.textContent = 'Cuando anotes tu primer partido, aparece acá.'
+      return
+    }
+    return vista === 'aporte'
+      ? graficoAporte(caja, leyenda, pie, partidos)
+      : graficoMinutos(caja, leyenda, pie, partidos)
+  }
+
+  function graficoAporte(caja, leyenda, pie, partidos) {
+    const aporte = (x) => x.goles + (x.asistencias ?? 0)
+    const tope = Math.max(1, ...partidos.map(aporte))
+
+    caja.innerHTML = partidos
+      .map((x, i) => {
+        const asist = x.asistencias ?? 0
+        const alto = (n) => (n === 0 ? 0 : Math.max(4, Math.round((n / tope) * (ALTO_GRAFICO - 4))))
+        const trozos =
+          aporte(x) === 0
+            ? '<span class="barra" data-cero="si" style="height:4px"></span>'
+            : `<span class="trozo-gol" style="height:${alto(x.goles)}px"></span>` +
+              (asist ? `<span class="trozo-asist" style="height:${alto(asist)}px"></span>` : '')
+        return (
+          `<button class="columna" type="button" data-i="${i}" aria-pressed="false"` +
+          ` aria-label="${escapar(x.rival)}: ${x.goles} goles, ${asist} asistencias">` +
+          `<span class="apilada">${trozos}</span></button>`
+        )
+      })
+      .join('')
+
+    // Con dos series la leyenda es obligatoria: el color solo no dice cuál es
+    // cuál, y aquí ni siquiera hay eje que lo aclare.
+    leyenda.innerHTML =
+      `<span><i style="background:var(--marca-partido)"></i>Goles</span>` +
+      `<span><i style="background:var(--marca-asist)"></i>Asistencias</span>`
+
+    const g = partidos.reduce((n, x) => n + x.goles, 0)
+    const a = sumaConocida(partidos, 'asistencias')
+    pie.innerHTML =
+      `<b>${g}</b> ${g === 1 ? 'gol' : 'goles'} y <b>${a.total}</b> ` +
+      `${a.total === 1 ? 'asistencia' : 'asistencias'} en ${partidos.length} partidos. Toca una barra.`
+  }
+
+  function graficoMinutos(caja, leyenda, pie, partidos) {
+    const conDato = partidos.filter((x) => typeof x.minutos === 'number')
+    const tope = Math.max(1, ...conDato.map((x) => x.minutos))
+
+    caja.innerHTML = partidos
+      .map((x, i) => {
+        const hay = typeof x.minutos === 'number'
+        const alto = hay ? Math.max(4, Math.round((x.minutos / tope) * (ALTO_GRAFICO - 4))) : 14
+        return (
+          `<button class="columna" type="button" data-i="${i}" aria-pressed="false"` +
+          ` aria-label="${escapar(x.rival)}: ${hay ? x.minutos + ' minutos' : 'sin registrar'}">` +
+          `<span class="barra" data-sin-dato="${hay ? 'no' : 'si'}" style="height:${alto}px"></span></button>`
+        )
+      })
+      .join('')
+
+    leyenda.innerHTML = `<span><i style="background:var(--marca-partido)"></i>Minutos jugados</span>` +
+      `<span><i style="background:none;box-shadow:inset 0 0 0 1px var(--borde)"></i>Sin registrar</span>`
+
+    const m = sumaConocida(partidos, 'minutos')
+    pie.innerHTML = m.cuantos
+      ? `<b>${m.total}</b> minutos en ${m.cuantos} de ${m.de} partidos.` +
+        (m.cuantos < m.de ? ' Los otros no los registraste.' : '')
+      : 'Todavía no registraste minutos en ningún partido.'
+  }
+
+  function graficoSemanas(caja, leyenda, pie) {
+    const semanas = []
+    const lunesActual = desdeIso(lunesDe(new Date()))
+    for (let w = SEMANAS_A_LA_VISTA - 1; w >= 0; w--) {
+      const d = new Date(lunesActual)
+      d.setDate(d.getDate() - w * 7)
+      const l = iso(d)
+      semanas.push({
+        lunes: l,
+        n: estado.entrenamientos.filter((e) => lunesDe(desdeIso(e.fecha)) === l).length
+      })
+    }
+
+    const tope = Math.max(estado.meta, ...semanas.map((x) => x.n))
+    const alturaDe = (n) => (n === 0 ? 3 : Math.max(6, Math.round((n / tope) * (ALTO_GRAFICO - 6))))
+
+    caja.innerHTML =
+      semanas
+        .map(
+          (x, i) =>
+            `<button class="columna" type="button" data-i="${i}" aria-pressed="false"` +
+            ` aria-label="Semana del ${x.lunes}: ${x.n} entrenamientos">` +
+            `<span class="barra" style="height:${alturaDe(x.n)}px;background:var(--marca-entreno)"></span>` +
+            `</button>`
+        )
+        .join('') +
+      // La meta como línea de referencia y no como color: teñir de rojo las
+      // semanas flojas convierte el gráfico en un reproche, y de un gráfico que
+      // te reprocha uno deja de mirar.
+      `<div class="linea-meta" style="bottom:${alturaDe(estado.meta)}px"><span>meta ${estado.meta}</span></div>`
+
+    leyenda.innerHTML = `<span><i style="background:var(--marca-entreno)"></i>Entrenamientos por semana</span>`
+
+    const cumplidas = semanas.filter((x) => x.n >= estado.meta).length
+    pie.innerHTML = `<b>${cumplidas}</b> de las últimas ${semanas.length} semanas cumpliste la meta.`
+    caja.dataset.semanas = JSON.stringify(semanas)
+  }
+
+
+
+  /*
+    Lo anotado en entrenamientos, en su propio gráfico y no mezclado con los
+    partidos. Separarlos es el punto: un pico en el martes no puede leerse como
+    un partidazo.
+  */
+  function graficoEntrenos(caja, leyenda, pie) {
+    const conAlgo = estado.entrenamientos
+      .filter((e) => (e.goles ?? 0) + (e.asistencias ?? 0) > 0)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+      .slice(-BARRAS_A_LA_VISTA)
+
+    if (conAlgo.length === 0) {
+      caja.style.height = '52px'
+      pie.textContent =
+        'Cuando anotes goles en un entrenamiento con «Agregar goles», aparecen acá.'
+      return
+    }
+
+    const aporte = (e) => (e.goles ?? 0) + (e.asistencias ?? 0)
+    const tope = Math.max(1, ...conAlgo.map(aporte))
+    const alto = (n) => (n === 0 ? 0 : Math.max(4, Math.round((n / tope) * (ALTO_GRAFICO - 4))))
+
+    caja.innerHTML = conAlgo
+      .map(
+        (e, i) =>
+          `<button class="columna" type="button" data-i="${i}" aria-pressed="false"` +
+          ` aria-label="${enPalabras(e.fecha)}: ${e.goles ?? 0} goles, ${e.asistencias ?? 0} asistencias">` +
+          `<span class="apilada">` +
+          `<span class="trozo-gol" style="height:${alto(e.goles ?? 0)}px;background:var(--marca-entreno)"></span>` +
+          ((e.asistencias ?? 0)
+            ? `<span class="trozo-asist" style="height:${alto(e.asistencias)}px"></span>`
+            : '') +
+          `</span></button>`
+      )
+      .join('')
+
+    // «Goles» a secas ya existe en la pestaña de al lado y en azul. Dos leyendas
+    // idénticas con colores distintos, a un toque de distancia, se leen como un
+    // error del que mira y no del que dibuja.
+    leyenda.innerHTML =
+      `<span><i style="background:var(--marca-entreno)"></i>Goles en entrenamiento</span>` +
+      `<span><i style="background:var(--marca-asist)"></i>Asistencias</span>`
+
+    const g = conAlgo.reduce((n, e) => n + (e.goles ?? 0), 0)
+    const a = conAlgo.reduce((n, e) => n + (e.asistencias ?? 0), 0)
+    pie.innerHTML =
+      `<b>${g}</b> ${g === 1 ? 'gol' : 'goles'} y <b>${a}</b> ` +
+      `${a === 1 ? 'asistencia' : 'asistencias'} en ${conAlgo.length} entrenamientos.`
+    caja.dataset.entrenos = JSON.stringify(conAlgo)
+  }
+
+
+
+  /*
+    La clave con la que dos nombres son el mismo equipo.
+
+    Ignora mayusculas, tildes y espacios de mas: «TRAF», «Traf» y «traf » son el
+    mismo club. Antes solo se quitaban los espacios, asi que una mayuscula
+    distinta partia en dos el historial contra un rival sin que nada avisara —
+    aparecian dos fichas con la mitad de los partidos cada una.
+
+    Lo que se muestra es la ultima forma en que lo escribiste, no la clave: la
+    clave es para agrupar, no para leerla.
+  */
+  const claveRival = (nombre) =>
+    nombre
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+
+  /** Los rivales ya jugados, del mas reciente al mas antiguo. */
+  function rivalesConocidos() {
+    const vistos = new Map()
+    for (const x of todosLosPartidos()) {
+      vistos.set(claveRival(x.rival), x.rival.trim())
+    }
+    return [...vistos.values()].reverse()
+  }
+
+  // ---------- contra quién ----------
+
+  /*
+    Sale gratis: el rival ya se guarda en cada partido. Es lo que uno quiere
+    mirar el día antes de jugar contra ellos, y hasta ahora esa información
+    estaba ahí desperdigada en la lista sin que nadie la juntara.
+  */
+  function porRival() {
+    const mapa = new Map()
+    for (const x of todosLosPartidos()) {
+      const clave = claveRival(x.rival)
+      // El nombre que se ve es el de la ultima vez: si empezaste escribiendolo
+      // mal y despues bien, la ficha se corrige sola.
+      const r = mapa.get(clave) ?? { rival: '', jugados: 0, g: 0, e: 0, p: 0, goles: 0 }
+      r.rival = x.rival.trim()
+      r.jugados++
+      const res = resultado(x)
+      if (res === 'g') r.g++
+      else if (res === 'p') r.p++
+      else r.e++
+      r.goles += x.goles
+      mapa.set(clave, r)
+    }
+    // Por veces jugadas, y a igualdad por nombre: el orden tiene que ser el
+    // mismo cada vez que abres, o parece que cambian solos.
+    return [...mapa.values()].sort(
+      (a, b) => b.jugados - a.jugados || a.rival.localeCompare(b.rival)
+    )
+  }
+
+  function pintarRivales() {
+    const lista = porRival()
+    document.getElementById('caja-rivales').hidden = lista.length === 0
+    if (lista.length === 0) return
+
+    document.getElementById('rivales').innerHTML = lista
+      .map(
+        (r) =>
+          `<div class="rival-fila">` +
+          `<span><span class="quien">${escapar(r.rival)}</span>` +
+          `<span class="cuantos">${r.jugados} ${r.jugados === 1 ? 'partido' : 'partidos'}</span></span>` +
+          `<span class="balance"><span class="g">${r.g}</span>` +
+          `<span class="e">–${r.e}–</span><span class="p">${r.p}</span></span>` +
+          `<span class="mios" data-cero="${r.goles === 0 ? 'si' : 'no'}">` +
+          `${r.goles} ${r.goles === 1 ? 'gol' : 'goles'}</span></div>`
+      )
+      .join('')
+  }
+
+  // ---------- la D ----------
+
+  /* Medidas reales de la cancha, en metros. */
+  /*
+    Tres datos que no van atados, aunque lo parezcan.
+
+    Primero los ate: «de 11 son cuatro cuartos, de 7 son dos tiempos». Es falso.
+    Rodrigo jugo una liga de 11 en dos tiempos de veinte. El formato dice cuantos
+    juegan; como se parte el partido y cuanto dura los decide el torneo, y cambian
+    de una competencia a otra.
+
+    Asi que son tres preguntas. Para que eso no cueste tres toques cada vez, se
+    recuerdan por torneo: la primera vez que anotas un partido de la Copa se
+    preguntan, y el resto de la Copa ya vienen puestos.
+  */
+  const FORMATOS = { 11: 'De 11', 7: 'De 7' }
+
+  const ESTRUCTURAS = {
+    2: { nombre: '2 tiempos', como: (n) => `${n}º t.` },
+    4: { nombre: '4 cuartos', como: (n) => `${n}º` }
+  }
+
+  const periodosDe = (x) => (x?.periodos === 2 ? 2 : 4)
+  const estructuraDe = (x) => ESTRUCTURAS[periodosDe(x)]
+
+  /*
+    Cuanto dura el partido.
+
+    El de 11 son siempre cuatro cuartos de quince: sesenta, y no hay nada que
+    preguntar. El de 7 dura lo que diga el torneo — a veces veinte minutos, a
+    veces doce — asi que la app no puede saberlo y no debe inventarlo.
+
+    Antes las fichas guardaban 60, 45, 30, 15 fijos en ambos formatos. Para un
+    partido de 7 de doce minutos eso guardaba un numero cinco veces mas grande
+    que el real, y lo sumaba al total con toda la cara.
+  */
+  const DURACIONES = [12, 20, 25, 30, 40, 60]
+
+  /* Solo se sabe si esta anotada. Nada se deduce del formato. */
+  const duracionDe = (x) => (typeof x.duracion === 'number' ? x.duracion : null)
+
+  /*
+    Como se jugo la ultima vez ese torneo, para no preguntarlo dos veces.
+
+    Se busca por nombre de torneo y formato: la Copa de 7 y la Copa de 11 son
+    competencias distintas aunque se llamen igual.
+  */
+  function comoSeJuega(torneo, formato) {
+    const clave = claveRival(torneo ?? '')
+    const previo = todosLosPartidos()
+      .filter((x) => claveRival(x.torneo ?? '') === clave && x.formato === formato)
+      .filter((x) => typeof x.duracion === 'number')
+      .pop()
+    return previo
+      ? { periodos: periodosDe(previo), duracion: previo.duracion }
+      : { periodos: formato === 7 ? 2 : 4, duracion: null }
+  }
+
+  /* Las fichas son proporciones; los minutos salen de multiplicar. */
+  const PARTES = [
+    [1, 'Todo'],
+    [0.75, 'Casi todo'],
+    [0.5, 'La mitad'],
+    [0.25, 'Un rato'],
+    [0, 'No jugué']
+  ]
+
+  const R_D = 14.63
+  const MEDIO_ARCO = 1.83
+
+  /*
+    Dentro de la D es «a menos de 14,63 m del segmento entre los dos postes».
+    Esa es literalmente la definición del reglamento, y sale más corta y más
+    exacta que juntar dos círculos y un rectángulo a mano.
+  */
+  function dentroDeLaD(x, y) {
+    if (y < 0) return false
+    const dx = Math.max(0, Math.abs(x) - MEDIO_ARCO)
+    return Math.hypot(dx, y) <= R_D
+  }
+
+  /* El dibujo. `puntos` son goles ya marcados; `nuevo` es el que se está poniendo. */
+  function dibujoDeLaD(puntos, { nuevo = null, poner = false } = {}) {
+    const ancho = 2 * (MEDIO_ARCO + R_D)
+    const alto = R_D + 1.6
+    const marcas = puntos
+      .map((g) => `<circle class="punto" cx="${g.x}" cy="${g.y}" r="0.85" />`)
+      .join('')
+    return (
+      `<svg class="cancha-d${poner ? ' d-poner' : ''}" id="svg-d"` +
+      ` viewBox="${-ancho / 2} -1.2 ${ancho} ${alto + 1.2}" role="img"` +
+      ` aria-label="Semicírculo de tiro con ${puntos.length} goles marcados">` +
+      // El césped dentro de la D, para que se lea como una zona y no como una raya.
+      `<path class="cesped" d="M ${-(MEDIO_ARCO + R_D)} 0` +
+      ` A ${R_D} ${R_D} 0 0 0 ${-MEDIO_ARCO} ${R_D}` +
+      ` L ${MEDIO_ARCO} ${R_D}` +
+      ` A ${R_D} ${R_D} 0 0 0 ${MEDIO_ARCO + R_D} 0 Z" />` +
+      `<path class="raya" d="M ${-(MEDIO_ARCO + R_D)} 0` +
+      ` A ${R_D} ${R_D} 0 0 0 ${-MEDIO_ARCO} ${R_D}` +
+      ` L ${MEDIO_ARCO} ${R_D}` +
+      ` A ${R_D} ${R_D} 0 0 0 ${MEDIO_ARCO + R_D} 0" />` +
+      `<line class="raya" x1="${-(MEDIO_ARCO + R_D)}" y1="0" x2="${MEDIO_ARCO + R_D}" y2="0" />` +
+      `<line class="arco" x1="${-MEDIO_ARCO}" y1="0" x2="${MEDIO_ARCO}" y2="0" />` +
+      marcas +
+      (nuevo ? `<circle class="punto-nuevo" cx="${nuevo.x}" cy="${nuevo.y}" r="1.1" />` : '') +
+      `</svg>`
+    )
+  }
+
+  /* Dónde tocó, en metros de cancha. */
+  function puntoDelToque(svg, evento) {
+    const caja = svg.getBoundingClientRect()
+    const vb = svg.viewBox.baseVal
+    const x = vb.x + ((evento.clientX - caja.left) / caja.width) * vb.width
+    const y = vb.y + ((evento.clientY - caja.top) / caja.height) * vb.height
+    return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
+  }
+
+  /* Todos los goles con su sitio puesto. Los que no lo tienen no van al mapa. */
+  const todosLosGoles = () =>
+    todosLosPartidos().flatMap((x) =>
+      (x.posiciones ?? [])
+        .filter((g) => typeof g.x === 'number')
+        .map((g) => ({ ...g, rival: x.rival, fecha: x.fecha }))
+    )
+
+  /* Y todos, con sitio o sin él, para contar por cuarto. */
+  const todosLosGolesDetallados = () =>
+    todosLosPartidos().flatMap((x) => x.posiciones ?? [])
+
+  /*
+    Un reparto por formato, nunca uno solo con todo dentro.
+
+    Un «3er cuarto» y un «2do tiempo» no son la misma casilla, y sumarlos en una
+    barra daria un numero que no significa nada. Es la misma regla que separa el
+    entrenamiento del partido: dos cosas distintas no se suman por caber en el
+    mismo grafico.
+  */
+  function pintarCuartos() {
+    const caja = document.getElementById('reparto-cuartos')
+    // Se agrupa por como se partio el partido, no por cuantos jugaban: un
+    // tercer cuarto y un segundo tiempo no son la misma casilla, y en cambio dos
+    // partidos de dos tiempos si lo son aunque uno sea de 11 y otro de 7.
+    const trozos = [2, 4].map((n) => unReparto(n)).filter(Boolean)
+
+    caja.innerHTML = trozos.length
+      ? `<p class="rotulo" style="margin:1rem 0 0">Cuándo marcas</p>` + trozos.join('')
+      : '<p class="detalle" style="margin-top:0.6rem">Marca el período de tus goles y acá ' +
+        'verás cuándo apareces.</p>'
+  }
+
+  function unReparto(periodos) {
+    const goles = todosLosPartidos()
+      .filter((x) => periodosDe(x) === periodos)
+      .flatMap((x) => x.posiciones ?? [])
+      .filter((g) => g.cuarto)
+    if (goles.length === 0) return null
+
+    const { nombre, como } = ESTRUCTURAS[periodos]
+    const cuenta = [...Array(periodos).keys()].map(
+      (i) => goles.filter((g) => g.cuarto === i + 1).length
+    )
+    const tope = Math.max(...cuenta)
+    const mejor = cuenta.indexOf(tope) + 1
+    const rejilla = `grid-template-columns:repeat(${periodos},1fr)`
+
+    return (
+      `<p class="detalle" style="margin:0.7rem 0 0">${nombre}</p>` +
+      `<div class="cuartos" style="${rejilla}">` +
+      cuenta
+        .map(
+          (n) =>
+            `<div><b>${n}</b><i style="height:${n === 0 ? 3 : Math.round((n / tope) * 44)}px"></i></div>`
+        )
+        .join('') +
+      `</div><div class="pies-cuartos" style="${rejilla}">` +
+      cuenta.map((_, i) => `<span>${como(i + 1)}</span>`).join('') +
+      `</div>` +
+      `<p class="detalle" style="margin-top:0.4rem">Sobre todo el <b>${como(mejor)}</b>, ` +
+      `con ${tope} de ${goles.length} ${goles.length === 1 ? 'gol' : 'goles'}.</p>`
+    )
+  }
+
+  function pintarMapaD() {
+    const goles = todosLosGoles()
+    const conCuarto = todosLosGolesDetallados().filter((g) => g.cuarto).length
+    const caja = document.getElementById('caja-d')
+    // La tarjeta no existe hasta que haya algo que enseñar: una D vacía no dice
+    // nada y ocupa media pantalla.
+    caja.hidden = goles.length === 0 && conCuarto === 0
+    if (caja.hidden) return
+    if (goles.length === 0) {
+      document.getElementById('cuenta-d').textContent = ''
+      document.getElementById('mapa-d').innerHTML = ''
+      document.getElementById('detalle-d').textContent = ''
+      return pintarCuartos()
+    }
+
+    document.getElementById('cuenta-d').textContent =
+      `${goles.length} ${goles.length === 1 ? 'gol' : 'goles'}`
+    document.getElementById('mapa-d').innerHTML = dibujoDeLaD(goles)
+    pintarCuartos()
+
+    // Lo que el mapa cuenta, dicho en palabras: un dibujo bonito que no se lee
+    // solo necesita una frase debajo.
+    const izq = goles.filter((g) => g.x < -MEDIO_ARCO).length
+    const der = goles.filter((g) => g.x > MEDIO_ARCO).length
+    const centro = goles.length - izq - der
+    const cerca = goles.filter((g) => g.y <= R_D / 2).length
+    const donde =
+      centro >= izq && centro >= der ? 'por el centro' : izq > der ? 'por la izquierda' : 'por la derecha'
+    document.getElementById('detalle-d').innerHTML =
+      `Marcas sobre todo <b>${donde}</b>, y <b>${cerca}</b> de ${goles.length} ` +
+      `desde dentro de los siete metros.`
+  }
+
+
+  // ---------- récords ----------
+
+  /*
+    Un récord se calcula, no se guarda. Lo que sí se guarda es el último valor
+    que la app te mostró, y sirve para una sola cosa: saber cuándo felicitarte.
+    Guardar el récord mismo abriría la puerta a que la cifra guardada y los
+    datos digan cosas distintas, y entonces habría que decidir cuál manda.
+  */
+  const RECORDS = [
+    {
+      id: 'goles-partido',
+      nombre: 'Más goles en un partido',
+      unidad: (n) => `${n} ${n === 1 ? 'gol' : 'goles'}`,
+      de: (partidos) => mejorPor(partidos, (x) => x.goles)
+    },
+    {
+      id: 'aporte-partido',
+      nombre: 'Más aporte en un partido',
+      unidad: (n) => `${n} entre goles y asistencias`,
+      de: (partidos) => mejorPor(partidos, (x) => x.goles + (x.asistencias ?? 0))
+    },
+    {
+      id: 'semana',
+      nombre: 'Más entrenamientos en una semana',
+      unidad: (n) => `${n} ${n === 1 ? 'entrenamiento' : 'entrenamientos'}`,
+      de: () => {
+        const porSemana = new Map()
+        for (const e of estado.entrenamientos) {
+          const l = lunesDe(desdeIso(e.fecha))
+          porSemana.set(l, (porSemana.get(l) ?? 0) + 1)
+        }
+        let mejor = { valor: 0, cuando: null }
+        for (const [l, n] of porSemana) {
+          if (n > mejor.valor) mejor = { valor: n, cuando: `semana del ${enPalabras(l)}` }
+        }
+        return mejor
+      }
+    },
+    {
+      id: 'racha',
+      nombre: 'Racha más larga',
+      unidad: (n) => `${n} ${n === 1 ? 'semana' : 'semanas'} seguidas`,
+      de: () => ({ valor: resumenLogros().rachaMax, cuando: null })
+    }
+  ]
+
+  function mejorPor(partidos, medir) {
+    let mejor = { valor: 0, cuando: null }
+    for (const x of partidos) {
+      const v = medir(x)
+      if (v > mejor.valor) mejor = { valor: v, cuando: `contra ${x.rival}, ${enPalabras(x.fecha)}` }
+    }
+    return mejor
+  }
+
+  const recordsAhora = () => {
+    const partidos = todosLosPartidos()
+    return Object.fromEntries(RECORDS.map((r) => [r.id, r.de(partidos)]))
+  }
+
+  /*
+    Devuelve los que se acaban de batir. La primera vez no devuelve nada aunque
+    haya datos: al abrir la app por primera vez con una temporada ya cargada,
+    todo sería «récord nuevo» y saldrían cuatro medallas seguidas por cosas que
+    hiciste hace un mes.
+  */
+  function revisarRecords() {
+    const ahora = recordsAhora()
+    const antes = estado.records
+    estado.records = Object.fromEntries(Object.entries(ahora).map(([k, v]) => [k, v.valor]))
+
+    if (!antes) {
+      guardar()
+      return []
+    }
+    const batidos = RECORDS.filter((r) => ahora[r.id].valor > (antes[r.id] ?? 0)).map((r) => ({
+      marca: String(ahora[r.id].valor),
+      nombre: 'Récord: ' + r.nombre.toLowerCase(),
+      pista: r.unidad(ahora[r.id].valor)
+    }))
+    guardar()
+    return batidos
+  }
+
+  function pintarRecords() {
+    const ahora = recordsAhora()
+    document.getElementById('records').innerHTML = RECORDS.map((r) => {
+      const v = ahora[r.id]
+      return (
+        `<div class="record" data-vacio="${v.valor === 0 ? 'si' : 'no'}">` +
+        `<span><span class="que">${r.nombre}</span>` +
+        `<span class="cuando">${v.valor === 0 ? 'Todavía sin marca' : v.cuando ?? r.unidad(v.valor)}</span></span>` +
+        `<span class="marca">${v.valor === 0 ? '—' : v.valor}</span></div>`
+      )
+    }).join('')
+  }
+
+
+  // ---------- mi temporada ----------
+
+  /*
+    Una lámina para sacarle una foto y mandarla. No hay botón de compartir a
+    propósito: el navegador de cada uno comparte distinto y la mitad de las
+    veces falla, mientras que sacar una captura funciona en todos los teléfonos
+    del mundo y la gente ya sabe hacerlo.
+  */
+  function abrirResumen() {
+    const t = totales()
+    const partidos = todosLosPartidos()
+    const goles = todosLosGoles()
+    const desde = [
+      ...estado.entrenamientos.map((e) => e.fecha),
+      ...estado.dias.map((d) => d.fecha)
+    ].sort()[0]
+
+    const rec = recordsAhora()
+    const conseguidos = LOGROS.filter((l) => estado.logros[l.id])
+
+    const hitos = [
+      ['Mejor partido', rec['goles-partido']],
+      ['Semana más cargada', rec['semana']],
+      ['Racha más larga', rec['racha']]
+    ]
+      .filter(([, v]) => v.valor > 0)
+      .map(
+        ([nombre, v]) =>
+          `<div class="hito"><b>${nombre}</b><span>${v.valor}${
+            v.cuando ? ` · ${v.cuando}` : ''
+          }</span></div>`
+      )
+      .join('')
+
+    const ganados = partidos.filter((x) => resultado(x) === 'g').length
+    const empatados = partidos.filter((x) => resultado(x) === 'e').length
+
+    document.getElementById('medalla').outerHTML = `
+      <div class="lamina" role="dialog" aria-modal="true" aria-labelledby="titulo-lamina" id="medalla">
+        <div class="encabezado-lamina">
+          <h3 id="titulo-lamina">Mi temporada</h3>
+          <p class="desde-cuando">${
+            desde ? `Desde el ${enPalabras(desde)}` : 'Todavía sin empezar'
+          }</p>
+        </div>
+
+        <div class="cifras-lamina">
+          <div><span class="cifra">${t.partidos}</span><span>Partidos</span></div>
+          <div><span class="cifra">${t.goles}</span><span>Goles</span></div>
+          <div><span class="cifra">${t.asistencias}</span><span>Asist.</span></div>
+          <div><span class="cifra">${t.entrenamientos}</span><span>Entrenos</span></div>
+        </div>
+
+        ${
+          goles.length
+            ? `<p class="titulillo">Desde dónde marqué</p>${dibujoDeLaD(goles)}`
+            : ''
+        }
+
+        ${
+          partidos.length
+            ? `<p class="titulillo">Resultados</p>` +
+              `<div class="hito"><b>${ganados} ganados</b><span>${empatados} empatados · ${
+                partidos.length - ganados - empatados
+              } perdidos</span></div>`
+            : ''
+        }
+
+        ${hitos ? `<p class="titulillo">Lo mejor</p>${hitos}` : ''}
+
+        ${
+          conseguidos.length
+            ? `<p class="titulillo">${conseguidos.length} logros</p>` +
+              `<div class="escuditos">${conseguidos
+                .map((l) => `<i title="${escapar(l.nombre)}">${l.marca}</i>`)
+                .join('')}</div>`
+            : ''
+        }
+
+        ${
+          t.golesEntreno || t.asistEntreno
+            ? `<p class="titulillo">En entrenamientos, aparte</p>` +
+              `<div class="hito"><b>${t.golesEntreno} goles</b><span>${t.asistEntreno} asistencias</span></div>`
+            : ''
+        }
+
+        <p class="firma">StickIQ · hockey césped</p>
+        <button class="boton" id="cerrar-lamina" type="button"
+                style="width:100%;margin-top:1rem;background:var(--pelota);border-color:var(--pelota);color:#3a2c00">
+          Cerrar
+        </button>
+      </div>
+    `
+    document.getElementById('fiesta').hidden = false
+    document.getElementById('cerrar-lamina').addEventListener('click', () => {
+      cola = []
+      document.getElementById('fiesta').hidden = true
+      // Se devuelve el contenedor a su forma normal: la próxima medalla que
+      // caiga tiene que encontrar una medalla, no una lámina de temporada.
+      document.getElementById('medalla').outerHTML =
+        '<div class="medalla" role="dialog" aria-modal="true" aria-labelledby="titulo-medalla" id="medalla"></div>'
+    })
+  }
+
+
+
+  // ---------- la copia de seguridad ----------
+
+  /*
+    Sin sesión de Claude en el teléfono, la página no puede usar ninguna
+    capacidad del sistema: ni base de datos, ni descargas. Lo que queda es el
+    portapapeles, y funciona en todos los teléfonos del mundo.
+
+    Así que la copia es copiar y pegar. Lo importante no es el botón de copiar
+    —ese ya existía— sino el de VOLVER A PEGAR: una copia que no se puede
+    restaurar no es una copia, es un texto largo que da tranquilidad falsa.
+  */
+
+  const diasDesde = (iso) =>
+    iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null
+
+  const DIAS_PARA_RECORDAR = 14
+
+  function pintarAvisoCopia() {
+    const caja = document.getElementById('aviso-copia')
+    /*
+      No en el primer toque.
+
+      Antes bastaba con que existiera un dato: marcabas tu primer entrenamiento
+      de la vida y el premio era un aviso diciendo que nunca has sacado una
+      copia, empujando hacia abajo la pelota que acababas de tocar. Convertia el
+      mejor momento de la app en una advertencia.
+
+      Tres sesiones es cuando ya hay algo que doleria perder.
+      */
+    const sesiones =
+      estado.entrenamientos.length +
+      estado.dias.reduce((n, d) => n + d.partidos.length, 0)
+    const hayAlgo = sesiones >= 3
+    const dias = diasDesde(estado.copiado)
+
+    // Callado si no hay nada que perder, o si la copia es reciente, o si ya lo
+    // apartaste hoy. Un aviso que sale siempre deja de leerse a la semana.
+    const toca =
+      hayAlgo && (dias === null || dias >= DIAS_PARA_RECORDAR) && estado.avisoVisto !== hoy()
+    caja.hidden = !toca
+    if (!toca) return
+
+    caja.innerHTML =
+      `<span style="flex:1;min-width:170px">` +
+      (dias === null
+        ? 'Nunca has sacado una copia de tus datos.'
+        : `Tu última copia es de hace ${dias} días.`) +
+      `</span>` +
+      `<button class="boton" data-tipo="fuerte" id="copiar-ya" type="button">Sacar copia</button>` +
+      `<button class="boton" id="copia-luego" type="button">Ahora no</button>`
+
+    document.getElementById('copiar-ya').addEventListener('click', () => {
+      caja.hidden = true
+      abrirDatos()
+    })
+    document.getElementById('copia-luego').addEventListener('click', () => {
+      // Se calla hasta mañana, no para siempre: lo que hay en juego es una
+      // temporada entera.
+      estado.avisoVisto = hoy()
+      guardar()
+      caja.hidden = true
+    })
+  }
+
+  /*
+    Restaurar desde un texto pegado.
+
+    Se valida antes de escribir nada: pegar cualquier cosa y que la app se quede
+    en blanco sería el peor final posible para una función que existe justamente
+    para que eso no pase.
+  */
+  function restaurarDesde(texto) {
+    let datos
+    try {
+      datos = JSON.parse(texto)
+    } catch {
+      return { ok: false, porque: 'Eso no parece una copia de StickIQ.' }
+    }
+    if (!datos || typeof datos !== 'object' || !Array.isArray(datos.entrenamientos)) {
+      return { ok: false, porque: 'Al texto le falta lo principal. ¿Lo copiaste entero?' }
+    }
+    const entrenos = datos.entrenamientos.length
+    const partidos = (datos.dias ?? []).reduce((n, d) => n + (d.partidos?.length ?? 0), 0)
+    return { ok: true, datos, entrenos, partidos }
+  }
+
+  // ---------- las tres pantallas ----------
+
+  /*
+    Nueve tarjetas seguidas eran un rollo infinito: para ver tus logros había que
+    pasar por todo lo demás. La guía de Liquid Glass lo dice sin rodeos — la
+    jerarquía se construye agrupando, no decorando.
+
+    Se cambia mostrando y escondiendo, no navegando: la app entera cabe en una
+    página, y recargar por pestaña perdería el estado a medio llenar de una hoja.
+  */
+  function irA(cual) {
+    document.querySelectorAll('.pantalla').forEach((p) => {
+      p.hidden = p.dataset.pantalla !== cual
+    })
+    document.querySelectorAll('#barra-abajo button').forEach((b) => {
+      b.setAttribute('aria-selected', String(b.dataset.pantalla === cual))
+    })
+    // Arriba del todo al cambiar: quedarse a media altura en una pantalla nueva
+    // se siente como si no hubiera pasado nada.
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
+  // ---------- cableado ----------
+
+  document.getElementById('btn-entrene').addEventListener('click', (e) => {
+    const era = entrenoHoy()
+    alternarHoy()
+    if (!era) {
+      const b = e.currentTarget
+      b.classList.remove('golpeada')
+      void b.offsetWidth
+      b.classList.add('golpeada')
+    }
+  })
+
+  document.getElementById('btn-deshacer').addEventListener('click', alternarHoy)
+  document.getElementById('btn-partido').addEventListener('click', abrirPartido)
+
+  /*
+    Y tambien desde Hoy. El dia de partido es el que produce los datos que mas
+    cuestan de recuperar, y hasta ahora la pantalla que abres ese dia ofrecia la
+    pelota del entrenamiento y nada mas: habia que saber que el boton vivia en
+    otra pestaña, debajo de un encabezado.
+  */
+  document.getElementById('btn-partido-hoy').addEventListener('click', abrirPartido)
+  document.getElementById('btn-datos').addEventListener('click', abrirDatos)
+
+  document.getElementById('logros').addEventListener('click', (e) => {
+    const b = e.target.closest('.logro')
+    if (b) contarLogro(b.dataset.id)
+  })
+
+  document.getElementById('barra-abajo').addEventListener('click', (e) => {
+    const b = e.target.closest('button')
+    if (b) irA(b.dataset.pantalla)
+  })
+  document.getElementById('btn-resumen').addEventListener('click', abrirResumen)
+  // Con una función de por medio y no `abrirDetalleEntreno` a secas: pasarla
+  // directa le entrega el evento del clic como si fuera la fecha, y entonces
+  // busca un entrenamiento con fecha MouseEvent, no encuentra nada y se sale
+  // sin hacer ni decir nada. El botón parecía muerto.
+  document.getElementById('btn-detalle-entreno').addEventListener('click', () =>
+    abrirDetalleEntreno()
+  )
+
+
+  /*
+    En un teléfono no hay puntero, así que el «hover con tooltip» del manual se
+    convierte en tocar y leer abajo. Un globo flotante en una pantalla de 400 px
+    tapa justo lo que acabas de tocar.
+  */
+  function soloUnoMarcado(caja, elegido) {
+    caja.querySelectorAll('[aria-pressed]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b === elegido))
+    })
+  }
+
+  document.getElementById('mapa').addEventListener('click', (e) => {
+    const celda = e.target.closest('.celda')
+    if (!celda || celda.disabled) return
+    soloUnoMarcado(document.getElementById('mapa'), celda)
+    mostrarDia(celda.dataset.fecha)
+  })
+
+  /*
+    Al tocar un día no solo se cuenta lo que hubo: se puede arreglar. Es el
+    único sitio donde se puede recuperar un entrenamiento que se te paso, y por
+    eso el botón vive aquí y no escondido en otra pantalla.
+  */
+  function mostrarDia(fecha) {
+    const caja = document.getElementById('detalle-mapa')
+    const tiene = estado.entrenamientos.some((x) => x.fecha === fecha)
+    caja.innerHTML =
+      contarDia(fecha) +
+      `<br><button type="button" class="boton" data-tipo="callado" data-fecha="${fecha}"` +
+      ` id="tocar-dia" style="padding:0.35rem 0">` +
+      (tiene ? 'Quitar el entrenamiento' : '+ Marcar que entrené') +
+      `</button>` +
+      (tiene
+        ? ` <button type="button" class="boton" data-tipo="callado" data-fecha="${fecha}"` +
+          ` id="detallar-dia" style="padding:0.35rem 0.5rem">Goles</button>`
+        : '')
+
+    document.getElementById('tocar-dia').addEventListener('click', () => {
+      alternarDia(fecha)
+      mostrarDia(fecha)
+    })
+    document.getElementById('detallar-dia')?.addEventListener('click', () => {
+      abrirDetalleEntreno(fecha)
+    })
+  }
+
+  document.getElementById('barras').addEventListener('click', (e) => {
+    const col = e.target.closest('.columna')
+    if (!col) return
+    soloUnoMarcado(document.getElementById('barras'), col)
+    const i = Number(col.dataset.i)
+    const pie = document.getElementById('detalle-goles')
+
+    if (vista === 'entrenos') {
+      const lista = JSON.parse(document.getElementById('barras').dataset.entrenos ?? '[]')
+      const e = lista[i]
+      pie.innerHTML =
+        `<b>${enPalabras(e.fecha)}</b> — ${e.goles ?? 0} ` +
+        `${(e.goles ?? 0) === 1 ? 'gol' : 'goles'}, ${e.asistencias ?? 0} ` +
+        `${(e.asistencias ?? 0) === 1 ? 'asistencia' : 'asistencias'}`
+      return
+    }
+
+    if (vista === 'semanas') {
+      const semanas = JSON.parse(document.getElementById('barras').dataset.semanas ?? '[]')
+      const w = semanas[i]
+      pie.innerHTML =
+        `<b>Semana del ${enPalabras(w.lunes)}</b> — ${w.n} ` +
+        `${w.n === 1 ? 'entrenamiento' : 'entrenamientos'} de ${estado.meta}`
+      return
+    }
+
+    const x = todosLosPartidos().slice(-BARRAS_A_LA_VISTA)[i]
+    // La sensación se muestra acá porque hasta ahora no se mostraba en ningún
+    // sitio: se pedía un toque por partido y no devolvía nada. Un campo que solo
+    // escribe es trabajo cobrado sin nada a cambio.
+    const trozos = [
+      `${x.goles} ${x.goles === 1 ? 'gol' : 'goles'}`,
+      typeof x.asistencias === 'number'
+        ? `${x.asistencias} ${x.asistencias === 1 ? 'asistencia' : 'asistencias'}`
+        : null,
+      typeof x.minutos === 'number' ? `${x.minutos} min` : null,
+      x.sensacion ? `te sentiste ${x.sensacion} de 5` : null
+    ].filter(Boolean)
+    pie.innerHTML =
+      `<b>${escapar(x.rival)} ${x.nuestros}–${x.suyos}</b> · ${trozos.join(' · ')} · ${enPalabras(x.fecha)}`
+  })
+
+  document.getElementById('pestanas').addEventListener('click', (e) => {
+    const b = e.target.closest('button')
+    if (!b) return
+    vista = b.dataset.vista
+    document
+      .querySelectorAll('#pestanas button')
+      .forEach((x) => x.setAttribute('aria-selected', String(x === b)))
+    pintarGrafico()
+  })
+
+  document.getElementById('dias').addEventListener('click', (e) => {
+    const fila = e.target.closest('.partido')
+    if (!fila) return
+    abrirEdicion(fila.dataset.dia, Number(fila.dataset.i))
+  })
+
+  document.getElementById('fiesta').addEventListener('click', (e) => {
+    if (e.target.id === 'fiesta') {
+      cola = []
+      document.getElementById('fiesta').hidden = true
+    }
+  })
+
+  document.getElementById('telon').addEventListener('click', (e) => {
+    if (e.target.id === 'telon') cerrarHoja()
+  })
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.getElementById('telon').hidden) cerrarHoja()
+  })
+
+  // Al volver a la pestaña puede haber cambiado el día: la app decía «listo por
+  // hoy» a las once de la noche y seguía diciéndolo a las nueve de la mañana.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) pintar()
+  })
+
+  pintar()
+</script>
+
+</body>
+</html>

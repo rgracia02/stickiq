@@ -10,7 +10,9 @@
  * analizador de sintaxis no puede: que las piezas sigan estando y sigan
  * conectadas entre sí.
  */
-import { js, marcado } from '../pruebas/marco.mjs'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { js, marcado, RAIZ } from '../pruebas/marco.mjs'
 
 let mal = 0
 
@@ -106,6 +108,30 @@ ok(
   hayMarca,
   hayMarca ? '' : 'la marca tiene que ir en #campo-d, no en algo permanente'
 )
+
+// ---------- el sitio publicado ----------
+
+/*
+  `docs/index.html` es lo que sirve GitHub Pages, y se genera desde `la-d.html`.
+  Si alguien toca la app y no reconstruye, el telefono sigue mostrando la
+  version vieja mientras las pruebas pasan sobre la nueva: verde en la consola
+  y mentira en la mano.
+
+  Se compara el archivo ENTERO, no `marcado`: ese es solo la mitad de arriba
+  del <script>, y con el bastaria dejar el codigo viejo para pasar la revision.
+*/
+const sitio = join(RAIZ, 'docs', 'index.html')
+if (!existsSync(sitio)) {
+  ok('docs/ esta construido', false, 'corre: npm run construir')
+} else {
+  const fuente = readFileSync(join(RAIZ, 'la-d.html'), 'utf8')
+  const alDia = readFileSync(sitio, 'utf8').includes(fuente)
+  ok(
+    'docs/index.html trae exactamente la app de ahora',
+    alDia,
+    alDia ? '' : 'docs/ quedo atras — corre: npm run construir'
+  )
+}
 
 // ---------- temas ----------
 

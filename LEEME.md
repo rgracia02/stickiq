@@ -34,7 +34,23 @@ de las asistencias estaba duplicado en un bloque de tema y ausente en otro.
 
 ## Publicar
 
-El archivo `la-d.html` es lo que se publica, tal cual. No hay compilación.
+`la-d.html` es la única fuente. Se publica en dos sitios y de dos maneras:
+
+**Como Artifact.** El archivo va tal cual: es un fragmento sin `doctype` ni
+cabeza, porque eso lo pone claude.ai. Cómodo, pero la página queda dentro del
+marco de claude.ai — con su barra arriba — y eso no se puede quitar.
+
+**Como sitio propio (GitHub Pages).** `npm run construir` genera `docs/`:
+`index.html` (la cabeza que falta más el archivo), el manifiesto, y tres iconos
+dibujados con la geometría real de la D. Ahí sí se ancla al iPhone a pantalla
+completa, con su icono y su nombre.
+
+`docs/` se **genera, nunca se copia a mano**, y `revisar.mjs` compara el
+archivo entero contra lo publicado: si tocas la app y no reconstruyes, las
+pruebas fallan antes de que el teléfono muestre una versión vieja.
+
+Ojo: cada dirección tiene su propio `localStorage`. Pasar de una a otra no
+lleva los datos — hay que sacar la copia desde «Datos» y pegarla en la otra.
 
 **No declarar capacidades del sistema** (`db`, `downloads`). La página está
 compartida públicamente porque Rodrigo la abre en un teléfono sin sesión de
