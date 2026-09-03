@@ -104,7 +104,7 @@ const CLAVE = [
   'restaurarDesde', 'irA', 'celebrar', 'cablearHoja', 'cablearD',
   'alternarDia', 'mostrarDia', 'normalizarGoles', 'pintarCuartos', 'todosLosGolesDetallados',
   'promedios', 'conComa', 'porRival', 'pintarRivales', 'unReparto', 'resultado', 'seFueAPenales', 'claveRival', 'rivalesConocidos', 'loQueViene', 'contarLogro', 'duracionDe', 'proporcionDe', 'aDatoLimpio',
-  'periodosDe', 'estructuraDe', 'comoSeJuega', 'recortarPeriodos', 'pintarDuracion', 'sugerirComoSeJuega', 'aplicarTema', 'temaDe'
+  'periodosDe', 'estructuraDe', 'comoSeJuega', 'recortarPeriodos', 'pintarDuracion', 'sugerirComoSeJuega', 'aplicarTema', 'temaDe', 'pintarResumen'
 ]
 
 const perdidas = CLAVE.filter((f) => !new RegExp(`(function|const)\\s+${f}\\b`).test(js))

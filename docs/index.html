@@ -1875,6 +1875,37 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /*
+    El desplegable de los campos que casi nunca cambian.
+
+    Se ve como una fila tocable, no como un boton lleno: no es una accion, es
+    una puerta. Y lleva su resumen debajo, mas chico, para que se pueda
+    comprobar lo de dentro sin abrirlo.
+  */
+  .mas-detalles {
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    background: none;
+    border: 1px dashed var(--borde);
+    border-radius: 10px;
+    color: var(--tinta);
+    min-height: 44px;
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .mas-detalles > span:first-child {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .resumen-detalles { font-size: 0.8rem; color: var(--tinta-suave); }
+
   .marcador-doble {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -1951,6 +1982,14 @@
     margin-top: 0.45rem;
     font-size: 0.82rem;
     color: rgb(255 255 255 / 0.72);
+  }
+
+  .extremos {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.76rem;
+    color: var(--tinta-suave);
+    margin-bottom: 0.3rem;
   }
 
   .sensacion { display: flex; gap: 0.4rem; }
@@ -2158,7 +2197,14 @@
     </section>
 
     <section class="tarjeta" id="caja-rivales" hidden>
-      <div class="encabezado-seccion"><h2>Contra quién</h2></div>
+      <div class="encabezado-seccion">
+        <h2>Contra quién</h2>
+        <!-- «0-0-2» no se explica solo, y el color tampoco: quien no distinga
+             verde de rojo ve tres numeros sin orden. Abreviado porque entero
+             parte el titulo en dos lineas, y un titulo roto se lee peor que
+             una abreviatura. -->
+        <span class="cuenta-logros">ganados–empat.–perd.</span>
+      </div>
       <div class="rivales" id="rivales"></div>
     </section>
 
@@ -2196,6 +2242,7 @@
   </div>
 
   <p class="pie">
+    <span id="leyenda-marcas"></span>
     Se guarda en este teléfono, sin cuenta y sin internet.<br>
     Nadie más la ve, y nadie más la respalda: la copia la sacas tú desde «Datos».
   </p>
@@ -2875,6 +2922,27 @@
         )
       })
       .join('')
+
+    /*
+      Y se explica lo que las filas abrevian, pero SOLO lo que aparece.
+
+      Un «2-0 con una p al lado» no se descifra solo. Explicar las tarjetas a
+      quien nunca tuvo una, en cambio, es ruido: cada linea de ayuda que sobra
+      hace que se dejen de leer las que hacen falta.
+    */
+    const partidos = todosLosPartidos()
+    const usadas = []
+    if (partidos.some((x) => (x.formato ?? 11) === 7)) usadas.push('⁷ es de 7')
+    if (partidos.some(seFueAPenales)) usadas.push('p se definió por penales')
+    for (const [id, texto] of TARJETAS) {
+      if (partidos.some((x) => (x.tarjetas?.[id] ?? 0) > 0)) {
+        usadas.push(`${texto[0]} ${texto.toLowerCase()}`)
+      }
+    }
+    const leyenda = document.getElementById('leyenda-marcas')
+    if (leyenda) {
+      leyenda.innerHTML = usadas.length ? `${usadas.join(' · ')}<br>` : ''
+    }
   }
 
   /*
@@ -2964,21 +3032,6 @@
                value="${escapar(borrador.rival)}">
         <p class="error-campo" id="error-rival" hidden></p>
       </div>
-
-      <div class="campo">
-        <label class="rotulo">Dónde <span style="text-transform:none;font-weight:400">(opcional)</span></label>
-        <div class="fichas" id="donde">
-          ${[['local', 'Local'], ['visita', 'Visita']]
-            .map(
-              ([id, texto]) =>
-                `<button type="button" data-donde="${id}" aria-pressed="${
-                  borrador.donde === id
-                }">${texto}</button>`
-            )
-            .join('')}
-        </div>
-      </div>
-
       <div class="marcador-doble">
         <div class="campo">
           <span class="mini-rotulo">${escapar(estado.equipo || 'Nosotros')}</span>
@@ -2990,7 +3043,6 @@
           ${contador('suyos', borrador.suyos)}
         </div>
       </div>
-
       <div class="campo" id="campo-penales" ${
         borrador.nuestros === borrador.suyos ? '' : 'hidden'
       }>
@@ -3006,7 +3058,62 @@
             .join('')}
         </div>
       </div>
+      <div class="campo">
+        <label class="rotulo">Tus goles</label>
+        ${contador('goles', borrador.goles)}
+      </div>
+      <div class="campo" id="campo-d" ${borrador.goles > 0 ? '' : 'hidden'}>
+        <label class="rotulo">Dónde marcaste <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+        <div id="poner-d"></div>
+        <p class="detalle" id="pie-d" style="margin-top:0.4rem"></p>
+        <div id="cuando-d"></div>
+      </div>
+      <div class="campo">
+        <label class="rotulo">Tus asistencias</label>
+        ${contador('asistencias', borrador.asistencias ?? 0)}
+      </div>
 
+      <!--
+        Todo lo de abajo se llena solo o casi nunca cambia: el torneo y la
+        fecha vienen puestos, y como se juega ese torneo se recuerda del
+        partido anterior. Tenerlo desplegado convertia la hoja en dos pantallas
+        de scroll y ponia el boton de guardar al final de un rollo.
+
+        El boton dice lo que hay dentro sin abrirlo. Un desplegable que esconde
+        lo que trae obliga a abrirlo para comprobar, y entonces no ahorra nada.
+      -->
+      <button type="button" class="mas-detalles" id="mas-detalles"
+              aria-expanded="false" aria-controls="detalles">
+        <span>Más detalles</span>
+        <span class="resumen-detalles" id="resumen-detalles"></span>
+      </button>
+
+      <div id="detalles" hidden>
+      <div class="campo">
+        <label class="rotulo" for="torneo">Torneo</label>
+        <input id="torneo" type="text" list="lista-torneos" autocomplete="off"
+               placeholder="Liga, copa, amistoso" value="${escapar(borrador.torneo)}">
+        <datalist id="lista-torneos">
+          ${torneos.map((t) => `<option value="${escapar(t)}"></option>`).join('')}
+        </datalist>
+      </div>
+      <div class="campo">
+        <label class="rotulo" for="fecha">Fecha</label>
+        <input id="fecha" type="date" value="${borrador.fecha}">
+      </div>
+      <div class="campo">
+        <label class="rotulo">Dónde <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+        <div class="fichas" id="donde">
+          ${[['local', 'Local'], ['visita', 'Visita']]
+            .map(
+              ([id, texto]) =>
+                `<button type="button" data-donde="${id}" aria-pressed="${
+                  borrador.donde === id
+                }">${texto}</button>`
+            )
+            .join('')}
+        </div>
+      </div>
       <div class="campo">
         <label class="rotulo">Cuántos jugaban</label>
         <div class="fichas" id="formato">
@@ -3019,7 +3126,6 @@
             .join('')}
         </div>
       </div>
-
       <div class="campo">
         <label class="rotulo">Cómo se jugó</label>
         <div class="fichas" id="estructura">
@@ -3033,24 +3139,6 @@
             .join('')}
         </div>
       </div>
-
-      <div class="campo">
-        <label class="rotulo">Tus goles</label>
-        ${contador('goles', borrador.goles)}
-      </div>
-
-      <div class="campo" id="campo-d" ${borrador.goles > 0 ? '' : 'hidden'}>
-        <label class="rotulo">Dónde marcaste <span style="text-transform:none;font-weight:400">(opcional)</span></label>
-        <div id="poner-d"></div>
-        <p class="detalle" id="pie-d" style="margin-top:0.4rem"></p>
-        <div id="cuando-d"></div>
-      </div>
-
-      <div class="campo">
-        <label class="rotulo">Tus asistencias</label>
-        ${contador('asistencias', borrador.asistencias ?? 0)}
-      </div>
-
       <div class="campo" id="campo-duracion">
         <label class="rotulo">Cuánto duró <span style="text-transform:none;font-weight:400">(en total)</span></label>
         <div class="fichas" id="duracion">
@@ -3070,7 +3158,6 @@
                value="${borrador.duracion && !DURACIONES.includes(borrador.duracion) ? borrador.duracion : ''}"
                ${borrador.duracion && !DURACIONES.includes(borrador.duracion) ? '' : 'hidden'}>
       </div>
-
       <div class="campo">
         <label class="rotulo">Cuánto jugaste <span style="text-transform:none;font-weight:400">(opcional)</span></label>
         <div class="fichas" id="minutos">
@@ -3083,9 +3170,11 @@
         </div>
         <p class="detalle" id="pie-minutos" style="margin-top:0.4rem"></p>
       </div>
-
       <div class="campo">
         <label class="rotulo">Cómo jugaste</label>
+        <!-- Un 1 a 5 sin anclas no dice nada: nadie sabe si 1 es lo mejor o lo
+             peor, y la app nunca lo decia. -->
+        <div class="extremos"><span>mal</span><span>de los mejores</span></div>
         <div class="sensacion" id="sensacion">
           ${[1, 2, 3, 4, 5]
             .map(
@@ -3097,7 +3186,6 @@
             .join('')}
         </div>
       </div>
-
       <div class="campo">
         <label class="rotulo">Tarjetas <span style="text-transform:none;font-weight:400">(si te sacaron alguna)</span></label>
         <div class="fichas" id="tarjetas">
@@ -3111,27 +3199,12 @@
           }).join('')}
         </div>
       </div>
-
       <div class="campo">
         <label class="rotulo" for="notas">Notas <span style="text-transform:none;font-weight:400">(opcional)</span></label>
         <textarea id="notas" rows="2" class="caja-texto"
                   placeholder="Lo que quieras acordarte de este partido">${escapar(borrador.notas ?? '')}</textarea>
       </div>
-
-      <div class="campo">
-        <label class="rotulo" for="torneo">Torneo</label>
-        <input id="torneo" type="text" list="lista-torneos" autocomplete="off"
-               placeholder="Liga, copa, amistoso" value="${escapar(borrador.torneo)}">
-        <datalist id="lista-torneos">
-          ${torneos.map((t) => `<option value="${escapar(t)}"></option>`).join('')}
-        </datalist>
       </div>
-
-      <div class="campo">
-        <label class="rotulo" for="fecha">Fecha</label>
-        <input id="fecha" type="date" value="${borrador.fecha}">
-      </div>
-
       <div class="acciones">
         <button class="boton" id="cancelar" type="button">Cancelar</button>
         <button class="boton" data-tipo="fuerte" id="guardar-partido" type="button">Guardar</button>
@@ -3287,6 +3360,38 @@
       if (err) err.hidden = true
     })
 
+    /*
+      El desplegable dice lo que trae dentro, y se actualiza al cambiarlo.
+
+      Sin el resumen habria que abrirlo para comprobar que el torneo heredado
+      es el correcto, y entonces no ahorraria nada: seguirian siendo dos
+      pantallas, solo que con un toque de mas.
+    */
+    const pintarResumen = () => {
+      const caja = document.getElementById('resumen-detalles')
+      if (!caja) return
+      const dur = duracionDe(borrador)
+      caja.textContent = [
+        borrador.torneo || 'Partido',
+        borrador.donde,
+        `${FORMATOS[borrador.formato] ?? 'De 11'}, ${estructuraDe(borrador).nombre}`,
+        dur ? `${dur} min` : null
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    }
+    pintarResumen()
+
+    document.getElementById('mas-detalles')?.addEventListener('click', (e) => {
+      const caja = document.getElementById('detalles')
+      const abierto = !caja.hidden
+      caja.hidden = abierto
+      e.currentTarget.setAttribute('aria-expanded', String(!abierto))
+      e.currentTarget.querySelector('span').textContent = abierto
+        ? 'Más detalles'
+        : 'Menos detalles'
+    })
+
     document.getElementById('donde')?.addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
@@ -3296,6 +3401,7 @@
       document.querySelectorAll('#donde button').forEach((x) => {
         x.setAttribute('aria-pressed', String(x.dataset.donde === borrador.donde))
       })
+      pintarResumen()
     })
 
     document.getElementById('tarjetas')?.addEventListener('click', (e) => {
@@ -3358,6 +3464,7 @@
       // Un «4o cuarto» no existe en un partido de dos tiempos: dejarlo guardado
       // seria peor que pedirlo de nuevo.
       recortarPeriodos()
+      pintarResumen()
       // Y los minutos se recalculan: la misma ficha vale distinto en un partido
       // de cuarenta que en uno de doce.
       const parte = proporcionDe(borrador)
