@@ -122,7 +122,18 @@ const PARES = (t) => [
   // La cancha no sigue el tema: siempre es azul oscura.
   ['texto blanco sobre la cancha', [255, 255, 255], color(t, '--cancha'), 4.5],
   ['texto apagado de la cancha', blanco(0.76, color(t, '--cancha')), color(t, '--cancha'), 4.5],
-  ['el boton de la cancha', blanco(0.78, color(t, '--cancha')), color(t, '--cancha'), 4.5],
+  /*
+    «Agendar» es una capsula, asi que son DOS medidas: el borde que la dibuja
+    contra la cancha (3, no es texto pero informa: sin el no se ve que sea un
+    control) y su texto contra su propio relleno, no contra la cancha.
+  */
+  ['el borde de «agendar»', blanco(0.55, color(t, '--cancha')), color(t, '--cancha'), 3],
+  [
+    'el texto de «agendar»',
+    blanco(0.92, blanco(0.14, color(t, '--cancha'))),
+    blanco(0.14, color(t, '--cancha')),
+    4.5
+  ],
   ['la cuenta regresiva', color(t, '--pelota'), color(t, '--cancha'), 3],
   ['el foco sobre la cancha', color(t, '--pelota'), color(t, '--cancha'), 3],
   ['las ranuras de la semana', color(t, '--pelota'), color(t, '--cancha'), 3]

@@ -850,19 +850,38 @@
 
   .proximo .que { font-size: 0.86rem; color: rgb(255 255 255 / 0.82); }
 
+  /*
+    «Agendar» tiene que PARECER que se puede tocar.
+
+    Era texto pelado sobre la cancha: el objetivo tactil medía 44 px, pero nada
+    en el dibujo decia que fuera un control. Un boton que solo es un boton
+    cuando ya lo tocaste no sirve de nada.
+
+    Es una capsula tenue, no un boton lleno: en esta tarjeta el amarillo de la
+    pelota es la accion principal y esta es la tercera en importancia. Se tiene
+    que ver, sin competir.
+
+    Los numeros estan medidos sobre la parte MAS CLARA de la cancha, que es el
+    peor caso: borde 3,36:1 y texto 4,71:1 sobre su propio relleno.
+  */
   .proximo button {
     margin-left: auto;
-    background: none;
-    border: none;
-    /* 0,6 daba 3,7:1 sobre el azul de la cancha y esto es texto. */
-    color: rgb(255 255 255 / 0.78);
+    align-self: center;
+    background: rgb(255 255 255 / 0.14);
+    border: 1px solid rgb(255 255 255 / 0.55);
+    border-radius: 999px;
+    color: rgb(255 255 255 / 0.92);
     font: inherit;
     font-size: 0.82rem;
     cursor: pointer;
     /* Media 100 x 28: por debajo de lo que un pulgar acierta a la primera. */
     min-height: 44px;
-    padding: 0.3rem 0.5rem;
+    padding: 0.3rem 0.9rem;
+    transition: background 160ms cubic-bezier(0.32, 0.72, 0, 1);
   }
+
+  /* Y que se note el toque: en un telefono no hay hover que lo anticipe. */
+  .proximo button:active { background: rgb(255 255 255 / 0.26); }
   .proximo button:hover { color: var(--linea); }
 
   /* ---------- logros ---------- */
