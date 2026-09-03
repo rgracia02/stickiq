@@ -57,6 +57,37 @@ compartida públicamente porque Rodrigo la abre en un teléfono sin sesión de
 Claude; con `db` la publicación falla, y sin sesión `claude.use()` devuelve
 `null` de todas formas. El respaldo es manual, copiar y pegar desde «Datos».
 
+## Temas
+
+Cuatro: **como el teléfono**, claro, oscuro y rosado. Se eligen en «Mis datos»
+y la elección viaja con la copia de respaldo.
+
+`auto` **quita** el atributo `data-theme` en vez de escribir uno. Es la
+diferencia entre «no tengo preferencia» y «quiero el claro»: con el atributo
+puesto, el CSS del sistema deja de aplicar y la app se queda clavada aunque el
+teléfono cambie al anochecer.
+
+El rosado no es el azul con el tono cambiado: la cancha pasa a frambuesa y los
+neutros se van al cálido. Lo que **no** cambia es la pelota (es la pelota), el
+verde y el rojo (dicen ganado y perdido) y las tres marcas de gráfico, que
+pasaron el validador de daltonismo. Los 19 pares de contraste de los cuatro
+temas los mide `verificar-contraste.mjs`, no el ojo.
+
+`--acento` existe porque `--marca-partido` hacía dos trabajos: color de dato
+validado y adorno. No se nota hasta que aparece un tema que quiere cambiar uno
+y no el otro.
+
+## Sin señal
+
+`docs/sw.js` guarda la app en el teléfono y la sirve aunque no haya red. La
+versión del caché es el hash de la página, así que cada publicación crea uno
+nuevo y borra el anterior. Cuando hay versión nueva la página avisa con un
+botón para recargar: sin eso, la actualización llegaría en la **segunda**
+apertura y se vería igual que una app rota.
+
+Vive solo en `docs/`. Dentro de un Artifact la página corre en un marco ajeno
+donde esto no aplica.
+
 ## Tipografías
 
 Van **dentro** del archivo, en un `<style id="fuentes">` generado por

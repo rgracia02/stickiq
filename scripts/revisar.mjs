@@ -12,6 +12,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 import { js, marcado, RAIZ } from '../pruebas/marco.mjs'
 
 let mal = 0
@@ -74,7 +75,7 @@ const CLAVE = [
   'restaurarDesde', 'irA', 'celebrar', 'cablearHoja', 'cablearD',
   'alternarDia', 'mostrarDia', 'normalizarGoles', 'pintarCuartos', 'todosLosGolesDetallados',
   'porRival', 'pintarRivales', 'unReparto', 'resultado', 'seFueAPenales', 'claveRival', 'rivalesConocidos', 'loQueViene', 'contarLogro', 'duracionDe', 'proporcionDe', 'aDatoLimpio',
-  'periodosDe', 'estructuraDe', 'comoSeJuega', 'recortarPeriodos', 'pintarDuracion', 'sugerirComoSeJuega'
+  'periodosDe', 'estructuraDe', 'comoSeJuega', 'recortarPeriodos', 'pintarDuracion', 'sugerirComoSeJuega', 'aplicarTema', 'temaDe'
 ]
 
 const perdidas = CLAVE.filter((f) => !new RegExp(`(function|const)\\s+${f}\\b`).test(js))
@@ -133,6 +134,27 @@ if (!existsSync(sitio)) {
   )
 }
 
+// ---------- el que guarda la copia ----------
+
+/*
+  `docs/sw.js` es lo que hace que la app abra sin señal, y su nombre de cache
+  es el hash de la pagina. Si los dos no coinciden, el telefono se queda
+  sirviendo una copia vieja para siempre y desde afuera se ve como una app que
+  dejo de actualizarse. No avisa nadie: por eso se compara.
+*/
+const sw = join(RAIZ, 'docs', 'sw.js')
+if (existsSync(sitio) && existsSync(sw)) {
+  const hash = createHash('sha256').update(readFileSync(sitio, 'utf8')).digest('hex').slice(0, 12)
+  const dice = readFileSync(sw, 'utf8').match(/stickiq-([0-9a-f]{12})/)?.[1]
+  ok(
+    'el cache del service worker apunta a la pagina de ahora',
+    dice === hash,
+    dice === hash ? '' : `sw.js dice ${dice}, la pagina es ${hash} — corre: npm run construir`
+  )
+} else {
+  ok('docs/sw.js existe', false, 'corre: npm run construir')
+}
+
 // ---------- texto de fuera ----------
 
 /*
@@ -166,17 +188,23 @@ ok(
 // ---------- temas ----------
 
 /*
-  Todo token de color tiene que estar definido en los tres estados del tema:
-  claro, oscuro por sistema y oscuro por elección. Uno que falte en un bloque no
-  rompe nada — simplemente ese color no se aplica, y la página se ve con el texto
-  de un tema sobre el fondo del otro.
+  Todo token de color tiene que estar definido en los CUATRO estados del tema:
+  claro, oscuro por sistema, oscuro por eleccion y rosado. Uno que falte en un
+  bloque no rompe nada — simplemente ese color no se aplica, y la pagina se ve
+  con el texto de un tema sobre el fondo del otro.
+
+  Los limites se calculan, no se escriben: cuando entro el rosado, el bloque
+  «eleccion» se comio los dos y un color que faltara en cualquiera de ellos
+  habria pasado desapercibido.
 */
 const finClaro = css.indexOf('@media (prefers-color-scheme: dark)')
 const finMedia = css.indexOf(':root[data-theme="dark"]')
+const finOscuro = css.indexOf(':root[data-theme="rosa"]')
 const bloques = {
   claro: css.slice(css.indexOf(':root {'), finClaro),
-  sistema: css.slice(finMedia === -1 ? finClaro : finClaro, finMedia),
-  eleccion: css.slice(finMedia, css.indexOf('* { box-sizing'))
+  sistema: css.slice(finClaro, finMedia),
+  eleccion: css.slice(finMedia, finOscuro),
+  rosa: css.slice(finOscuro, css.indexOf('* { box-sizing'))
 }
 
 /*
@@ -198,8 +226,10 @@ const incompletos = [...todos]
   Lo que a propósito no cambia con el tema.
 
   · Las medidas no son colores.
-  · La cancha es azul de día y de noche: esa tarjeta es una superficie
-    comprometida, no se adapta, y ese fue el criterio desde el primer día.
+  · La cancha no sigue al tema del sistema: es azul de dia y de noche, porque
+    esa tarjeta es una superficie comprometida. El rosado si la cambia, y por
+    eso es otro mundo y no el mismo con un acento distinto — pero sigue siendo
+    una eleccion explicita, no algo que deba estar en todos los bloques.
 
   La lista es corta y explícita para que siga sirviendo: cualquier color NUEVO
   que no esté en los tres bloques salta, que es justo lo que hace falta.
@@ -207,7 +237,7 @@ const incompletos = [...todos]
 const A_PROPOSITO = ['--paso', '--radio', '--cancha', '--cancha-honda', '--pelota', '--linea']
 const deColor = incompletos.filter((t) => !A_PROPOSITO.includes(t))
 ok(
-  `los ${todos.size - A_PROPOSITO.length} colores existen en los tres temas`,
+  `los ${todos.size - A_PROPOSITO.length} colores existen en los cuatro temas`,
   deColor.length === 0,
   deColor.join(', ')
 )

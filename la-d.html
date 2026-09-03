@@ -36,6 +36,18 @@
     --marca-asist: #7b57c9;
 
     /*
+      El acento decorativo, separado del color de dato.
+
+      Eran el mismo: `--marca-partido` pintaba a la vez las barras del grafico
+      —donde su color esta validado contra el daltonismo, junto al ambar y al
+      morado— y el aro del nivel, el medidor y la cifra del record, donde solo
+      es adorno. Un token con dos trabajos no se nota hasta que aparece un tema
+      que quiere cambiar uno y no el otro: en el rosado, el aro azul se leia
+      como un resto del tema anterior.
+    */
+    --acento: #1a7fbf;
+
+    /*
       Dos colores que el amarillo pelota no puede hacer sobre fondo claro.
 
       El amarillo tiene 1,44:1 sobre el papel y 1,63:1 sobre la tarjeta. Estaba
@@ -69,6 +81,7 @@
       --marca-asist: #9b7ae0;
       --foco: #f5c518;
       --gol-cifra: #f5c518;
+      --acento: #2f8fcc;
     }
   }
 
@@ -87,6 +100,42 @@
     --marca-asist: #9b7ae0;
     --foco: #f5c518;
     --gol-cifra: #f5c518;
+    --acento: #2f8fcc;
+  }
+
+  /*
+    El tercer tema: rosado.
+
+    No es el azul con el tono cambiado. La cancha pasa a ser una superficie
+    frambuesa y los neutros se van al calido —el papel tiene rosa dentro, no es
+    un gris con un acento encima—, que es de donde sale que se lea como otro
+    mundo y no como el mismo mundo pintado.
+
+    Lo que NO cambia: la pelota sigue amarilla, porque es la pelota; el verde y
+    el rojo siguen siendo verde y rojo, porque dicen ganado y perdido y eso no
+    es decoracion. Y las tres marcas de grafico se quedan igual: pasaron el
+    validador de daltonismo y cambiarlas por gusto es tirar esa comprobacion.
+
+    Todos estos numeros los aprobo verificar-contraste.mjs, no mi ojo.
+  */
+  :root[data-theme="rosa"] {
+    --cancha: #8e2255;
+    --cancha-honda: #2d0a1b;
+    --papel: #fdf2f6;
+    --tarjeta: #ffffff;
+    --tinta: #2b1220;
+    --tinta-suave: #74505f;
+    --borde: #f0d4e0;
+    --verde: #1f8a5b;
+    --verde-texto: #1a7a50;
+    --rojo: #c0392f;
+    --marca-entreno: #b8770a;
+    --marca-partido: #1a7fbf;
+    --celda-vacia: #f7e2ea;
+    --marca-asist: #7b57c9;
+    --foco: #a3175c;
+    --gol-cifra: #a3175c;
+    --acento: #a3175c;
   }
 
   * { box-sizing: border-box; }
@@ -466,10 +515,10 @@
     border-radius: 50%;
     display: grid;
     place-items: center;
-    background: color-mix(in srgb, var(--marca-partido) 14%, transparent);
-    border: 2px solid var(--marca-partido);
+    background: color-mix(in srgb, var(--acento) 14%, transparent);
+    border: 2px solid var(--acento);
   }
-  .nivel-numero .cifra { font-size: 2.1rem; color: var(--marca-partido); }
+  .nivel-numero .cifra { font-size: 2.1rem; color: var(--acento); }
 
   .nivel-texto { flex: 1; min-width: 0; }
   .nivel-texto .que-falta { font-size: 0.88rem; color: var(--tinta-suave); margin: 0.35rem 0 0.5rem; }
@@ -484,7 +533,7 @@
     display: block;
     height: 100%;
     border-radius: 99px;
-    background: var(--marca-partido);
+    background: var(--acento);
     transition: width 420ms cubic-bezier(0.32, 0.72, 0, 1);
   }
 
@@ -804,7 +853,7 @@
     font-weight: 700;
     font-size: 1.6rem;
     font-variant-numeric: tabular-nums;
-    color: var(--marca-partido);
+    color: var(--acento);
     line-height: 1;
   }
   .record[data-vacio="si"] .marca { color: var(--tinta-suave); }
@@ -997,7 +1046,7 @@
 
 
   .aviso-suave {
-    background: color-mix(in srgb, var(--marca-partido) 10%, var(--tarjeta));
+    background: color-mix(in srgb, var(--acento) 10%, var(--tarjeta));
     border: 1px solid color-mix(in srgb, var(--marca-partido) 35%, var(--borde));
     border-radius: 10px;
     padding: 0.8rem 0.9rem;
@@ -1751,11 +1800,57 @@
     agenda: [],
     records: null,
     copiado: null,
-    avisoVisto: null
+    avisoVisto: null,
+    // 'auto' sigue al telefono. Lo que elija manda sobre el sistema.
+    tema: 'auto'
   }
 
   let estado = leer()
   let borrador = null
+
+  /*
+    Los temas.
+
+    El oscuro ya existia desde el primer dia, pero seguia al telefono y no habia
+    forma de elegirlo. Ahora hay cuatro: seguir al telefono, claro, oscuro y
+    rosado.
+
+    'auto' QUITA el atributo en vez de escribir un valor. Es la diferencia entre
+    «no tengo preferencia» y «quiero el claro»: con el atributo puesto, el CSS
+    del sistema deja de aplicar y la app se queda clavada en un tema aunque el
+    telefono cambie al anochecer.
+  */
+  const TEMAS = [
+    ['auto', 'Como el teléfono'],
+    ['light', 'Claro'],
+    ['dark', 'Oscuro'],
+    ['rosa', 'Rosado']
+  ]
+
+  const temaDe = (e) => (TEMAS.some(([t]) => t === e?.tema) ? e.tema : 'auto')
+
+  function aplicarTema() {
+    const t = temaDe(estado)
+    if (t === 'auto') delete document.documentElement.dataset.theme
+    else document.documentElement.dataset.theme = t
+    /*
+      Y la barra de estado del telefono, que no lee variables CSS.
+
+      Sin esto, al elegir el rosado el borde de arriba de la pantalla se queda
+      del color del tema anterior: un filo de otro color que la app no dibujo y
+      que parece un fallo de la app, no del navegador.
+    */
+    for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
+      // El valor original se guarda la primera vez. Sin esto, volver a «Como el
+      // telefono» dejaba la barra con el color del tema que se acababa de
+      // abandonar: se podia salir de auto, pero no volver.
+      if (m.dataset.suyo === undefined) m.dataset.suyo = m.getAttribute('content') ?? ''
+      m.setAttribute(
+        'content',
+        t === 'auto' ? m.dataset.suyo : getComputedStyle(document.body).backgroundColor
+      )
+    }
+  }
 
   // ---------- guardar ----------
 
@@ -1823,7 +1918,11 @@
         // primera vez que se abre con datos ya dentro.
         records: d.records ?? null,
         copiado: d.copiado ?? null,
-        avisoVisto: d.avisoVisto ?? null
+        avisoVisto: d.avisoVisto ?? null,
+        // `leer` reconstruye el estado campo a campo, no lo copia: un campo
+        // nuevo que no se nombre aca se guarda bien y desaparece en la
+        // siguiente lectura. Eso mismo hizo el tema hasta que lo probe.
+        tema: d.tema ?? 'auto'
       }
     } catch {
       return { ...ESTADO_VACIO }
@@ -2886,6 +2985,21 @@
     const dias = diasDesde(estado.copiado)
     document.getElementById('hoja-registro').innerHTML = `
       <h2 id="titulo-hoja">Mis datos</h2>
+
+      <div class="campo">
+        <label class="rotulo">Colores</label>
+        <div class="fichas" id="tema">
+          ${TEMAS.map(
+            ([id, texto]) =>
+              `<button type="button" data-tema="${id}" aria-pressed="${
+                temaDe(estado) === id
+              }">${texto}</button>`
+          ).join('')}
+        </div>
+      </div>
+
+      <hr class="separador">
+
       <p style="margin:0;font-size:0.9rem;color:var(--tinta-suave)">
         Tus datos viven solo en este teléfono y en este navegador. Si borras los
         datos del sitio o cambias de teléfono, se van. Sacar una copia de vez en
@@ -2919,6 +3033,17 @@
     `
 
     document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+
+    document.getElementById('tema').addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      estado.tema = b.dataset.tema
+      guardar()
+      aplicarTema()
+      document.querySelectorAll('#tema button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x.dataset.tema === estado.tema))
+      })
+    })
 
     document.getElementById('copiar').addEventListener('click', async (e) => {
       const area = document.getElementById('volcado')
@@ -4404,5 +4529,7 @@
     if (!document.hidden) pintar()
   })
 
+  // El tema antes de pintar: al reves se ve un parpadeo del tema anterior.
+  aplicarTema()
   pintar()
 </script>

@@ -30,6 +30,8 @@ const oscuro = {
   ...claro,
   ...bloque('@media (prefers-color-scheme: dark)', ':root[data-theme="dark"]')
 }
+// El rosado hereda del claro lo que no redefine, igual que el oscuro.
+const rosa = { ...claro, ...bloque(':root[data-theme="rosa"]', '* { box-sizing') }
 
 const aRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 const luz = ([r, g, b]) => {
@@ -82,6 +84,8 @@ const PARES = (t) => [
   ['el rojo de los errores', color(t, '--rojo'), color(t, '--tarjeta'), 4.5],
 
   // Marcas de grafico: no son texto, pero distinguen series.
+  // El acento decorativo: la cifra del nivel y la del record son texto grande.
+  ['la cifra del nivel y del record', color(t, '--acento'), color(t, '--tarjeta'), 3],
   ['marca de entrenamiento', color(t, '--marca-entreno'), color(t, '--tarjeta'), 3],
   ['marca de partido', color(t, '--marca-partido'), color(t, '--tarjeta'), 3],
   ['marca de asistencia', color(t, '--marca-asist'), color(t, '--tarjeta'), 3],
@@ -101,7 +105,7 @@ const PARES = (t) => [
 ]
 
 let mal = 0
-for (const [nombreTema, tema] of [['claro', claro], ['oscuro', oscuro]]) {
+for (const [nombreTema, tema] of [['claro', claro], ['oscuro', oscuro], ['rosa', rosa]]) {
   console.log(`\n  tema ${nombreTema}`)
   for (const [que, fg, bg, min] of PARES(tema)) {
     const v = razon(fg, bg)

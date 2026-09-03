@@ -12,7 +12,9 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { createHash } from 'node:crypto'
 import { dibujar } from './icono.mjs'
+import { worker, registro, estilo } from './sw.mjs'
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DESTINO = join(RAIZ, 'docs')
@@ -61,14 +63,27 @@ const cabeza = `<!doctype html>
   /* Lo unico que el envoltorio del Artifact aportaba y la app no repite. El
      area segura del iPhone no va aca: .barra-abajo ya la respeta sola. */
   [hidden] { display: none !important; }
+${estilo}
 </style>
 </head>
 <body>
+${registro}
 `
 
 mkdirSync(DESTINO, { recursive: true })
 
-writeFileSync(join(DESTINO, 'index.html'), cabeza + app + '\n</body>\n</html>\n')
+const pagina = cabeza + app + '\n</body>\n</html>\n'
+writeFileSync(join(DESTINO, 'index.html'), pagina)
+
+/*
+  La version del cache es el hash de la pagina.
+
+  Con un numero puesto a mano se olvida subirlo y el telefono se queda con la
+  version vieja para siempre, sin que nada avise. Con el hash, cada cambio real
+  crea un cache nuevo y el anterior se borra solo.
+*/
+const version = createHash('sha256').update(pagina).digest('hex').slice(0, 12)
+writeFileSync(join(DESTINO, 'sw.js'), worker(version))
 
 writeFileSync(
   join(DESTINO, 'manifest.webmanifest'),
@@ -104,4 +119,7 @@ for (const lado of [180, 192, 512]) {
   writeFileSync(join(DESTINO, `icono-${lado}.png`), dibujar(lado))
 }
 
-console.log(`docs/ listo — index.html (${Math.round((cabeza.length + app.length) / 1024)} KB), manifiesto y 3 iconos`)
+console.log(
+  `docs/ listo — index.html (${Math.round(pagina.length / 1024)} KB), ` +
+    `sw.js (${version}), manifiesto y 3 iconos`
+)

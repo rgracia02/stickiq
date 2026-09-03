@@ -117,5 +117,19 @@ eq('un asistencias en cero SÍ es cero, no desconocido',
 globalThis.__crudo = 'esto no es json'
 si('un texto corrupto no tumba la app', Array.isArray(M.leer().entrenamientos))
 
+console.log('\n- el tema elegido sobrevive a la lectura -')
+/*
+  `leer` reconstruye el estado campo a campo en vez de copiarlo. Es a proposito
+  —asi una copia antigua entra con los campos nuevos rellenos—, pero tiene un
+  filo: un campo que no se nombre ahi se guarda bien y desaparece en la lectura
+  siguiente. Eso le paso al tema, y no lo vio ninguna prueba: lo vi al usarlo.
+*/
+globalThis.__crudo = JSON.stringify({ meta: 3, entrenamientos: [], dias: [], tema: 'rosa' })
+eq('el rosado vuelve', M.leer().tema, 'rosa')
+globalThis.__crudo = JSON.stringify({ meta: 3, entrenamientos: [], dias: [] })
+eq('sin nada elegido, sigue al telefono', M.leer().tema, 'auto')
+globalThis.__crudo = JSON.stringify({ meta: 3, entrenamientos: [], dias: [], tema: 'dark' })
+eq('y el oscuro tambien', M.leer().tema, 'dark')
+
 console.log(`\n${ok} ok, ${mal} fallos`)
 process.exit(mal ? 1 : 0)
