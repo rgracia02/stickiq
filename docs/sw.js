@@ -3,7 +3,7 @@
   La version es el hash del sitio: cada publicacion crea un cache nuevo y los
   viejos se borran solos.
 */
-const CACHE = 'stickiq-21688542c84d'
+const CACHE = 'stickiq-82a356731cda'
 const PIEZAS = [
   './',
   './index.html',

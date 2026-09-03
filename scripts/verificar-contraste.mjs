@@ -127,6 +127,9 @@ const PARES = (t) => [
     contra la cancha (3, no es texto pero informa: sin el no se ve que sea un
     control) y su texto contra su propio relleno, no contra la cancha.
   */
+  // La tarjeta verde: es lo unico que estrena color de fondo con texto encima.
+  ['la tarjeta verde', [255, 255, 255], color(t, '--verde-fondo'), 4.5],
+  ['la tarjeta verde, contra la fila', color(t, '--verde-fondo'), color(t, '--tarjeta'), 3],
   ['el borde de «agendar»', blanco(0.55, color(t, '--cancha')), color(t, '--cancha'), 3],
   [
     'el texto de «agendar»',

@@ -41,6 +41,16 @@
     */
     --rojo-fondo: #c0392f;
 
+    /*
+      El verde de FONDO, distinto del verde de texto. Mismo caso que el rojo:
+      el verde que se lee sobre papel claro no aguanta blanco encima, y en tema
+      oscuro se aclara todavia mas. La tarjeta verde daba 2,38:1 en oscuro.
+
+      Este vale en los cuatro temas: blanco encima 5,33:1 y 3,09:1 contra la
+      tarjeta oscura, que es donde peor se separa.
+    */
+    --verde-fondo: #1a7a50;
+
 
     /* Marcas de grafico. No son los colores de marca: el amarillo pelota
        tiene 1,59:1 sobre blanco y desaparece. Estos pasaron el validador
@@ -93,6 +103,7 @@
       /* Mas oscuro que --rojo para aguantar blanco (4,73:1), y bastante claro
          para separarse de la tarjeta oscura (3,47:1). Los dos, medidos. */
       --rojo-fondo: #cf4034;
+      --verde-fondo: #1a7a50;
       --marca-entreno: #bd8718;
       --marca-partido: #2f8fcc;
       --celda-vacia: #1b2c37;
@@ -113,6 +124,7 @@
     --verde-texto: #3fbd84;
     --rojo: #ef6b60;
     --rojo-fondo: #cf4034;
+    --verde-fondo: #1a7a50;
     --marca-entreno: #bd8718;
     --marca-partido: #2f8fcc;
     --celda-vacia: #1b2c37;
@@ -149,6 +161,7 @@
     --verde-texto: #1a7a50;
     --rojo: #c0392f;
     --rojo-fondo: #c0392f;
+    --verde-fondo: #1a7a50;
     --marca-entreno: #b8770a;
     --marca-partido: #1a7fbf;
     --celda-vacia: #f7e2ea;
@@ -524,6 +537,25 @@
   /* Los penales llevan su propia marca: antes compartia clase con la del
      formato, asi que un «2–2ᵖ» y un «3–1⁷» se leian como la misma clase de
      anotacion en la fila mas densa de la app. */
+  /*
+    La tarjeta en la fila: letra Y color, nunca solo color.
+
+    En la fila mas densa de la app un cuadrito de color no dice nada por si
+    mismo, y quien no distinga los tonos no ve la diferencia entre una amarilla
+    y una roja. La inicial la dice; el color la encuentra de lejos.
+  */
+  .marca-tarjeta {
+    font-size: 0.68rem;
+    font-weight: 700;
+    margin-left: 0.2rem;
+    padding: 0 0.28rem;
+    border-radius: 4px;
+    vertical-align: 1px;
+  }
+  .marca-tarjeta[data-t="verde"] { background: var(--verde-fondo); color: #fff; }
+  .marca-tarjeta[data-t="amarilla"] { background: var(--pelota); color: #3a2c00; }
+  .marca-tarjeta[data-t="roja"] { background: var(--rojo-fondo); color: #fff; }
+
   .marca-penales {
     font-size: 0.7rem;
     font-weight: 600;
@@ -1758,6 +1790,29 @@
     letter-spacing: 0.03em;
     cursor: pointer;
   }
+  /*
+    Una tarjeta puesta se ve de su color.
+
+    El color no va solo: la ficha dice «Amarilla» al lado. Quien no distinga
+    los tonos lee la palabra, y quien mira rapido ve el color — que es de lo
+    poco donde el color ES el nombre de la cosa.
+  */
+  .fichas button.tarjeta-verde[aria-pressed="true"] {
+    background: var(--verde-fondo);
+    border-color: var(--verde-fondo);
+    color: #fff;
+  }
+  .fichas button.tarjeta-amarilla[aria-pressed="true"] {
+    background: var(--pelota);
+    border-color: var(--pelota);
+    color: #3a2c00;
+  }
+  .fichas button.tarjeta-roja[aria-pressed="true"] {
+    background: var(--rojo-fondo);
+    border-color: var(--rojo-fondo);
+    color: #fff;
+  }
+
   .fichas button[aria-pressed="true"] {
     background: var(--cancha);
     border-color: var(--cancha);
@@ -2064,7 +2119,10 @@
     copiado: null,
     avisoVisto: null,
     // 'auto' sigue al telefono. Lo que elija manda sobre el sistema.
-    tema: 'auto'
+    tema: 'auto',
+    // Se pregunta UNA vez, en Mis datos. Vacio significa «no lo ha dicho», y
+    // entonces el marcador vuelve a decir «nosotros».
+    equipo: ''
   }
 
   let estado = leer()
@@ -2144,6 +2202,13 @@
             // null = no hubo penales. No es lo mismo que haberlos perdido.
             penales: null,
             duracion: null,
+            // null = no se sabe donde se jugo. Los partidos anotados antes de
+            // que existiera la pregunta no eran de local: es que no se
+            // pregunto. Un «local» inventado ensucia justo la comparacion
+            // para la que sirve el dato.
+            donde: null,
+            // Sin tarjetas es lo normal, y por eso el vacio significa cero.
+            tarjetas: [],
             // Los partidos guardados antes de que existiera el formato se leen
             // como de 11. No es un adivinar: cuando se anotaron, las fichas de
             // periodo solo ofrecian cuatro cuartos, asi que eso es lo que
@@ -2184,7 +2249,8 @@
         // `leer` reconstruye el estado campo a campo, no lo copia: un campo
         // nuevo que no se nombre aca se guarda bien y desaparece en la
         // siguiente lectura. Eso mismo hizo el tema hasta que lo probe.
-        tema: d.tema ?? 'auto'
+        tema: d.tema ?? 'auto',
+        equipo: typeof d.equipo === 'string' ? d.equipo : ''
       }
     } catch {
       return { ...ESTADO_VACIO }
@@ -2499,6 +2565,13 @@
               ` aria-label="Editar ${escapar(p.rival)}">` +
               `<span class="rival">${escapar(p.rival)}</span>` +
               `<span class="marcador" data-r="${resultado(p)}">${p.nuestros}–${p.suyos}` +
+              (p.tarjetas ?? [])
+                .map(
+                  (t) =>
+                    `<span class="marca-tarjeta" data-t="${t}" title="Tarjeta ${t}">` +
+                    `${t[0].toUpperCase()}</span>`
+                )
+                .join('') +
               (seFueAPenales(p) ? `<span class="marca-penales">p</span>` : '') +
               ((p.formato ?? 11) === 7 ? `<span class="formato-7">7</span>` : '') +
               `</span>` +
@@ -2557,6 +2630,9 @@
         puesto el — el mismo error que ya habia arreglado dos veces.
       */
       eligio: { periodos: false, duracion: false },
+      donde: null,
+      tarjetas: [],
+      notas: '',
       penales: null,
       fecha: hoy(),
       // El torneo se hereda del último día: en una fecha juegas tres partidos
@@ -2603,9 +2679,23 @@
         <p class="error-campo" id="error-rival" hidden></p>
       </div>
 
+      <div class="campo">
+        <label class="rotulo">Dónde <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+        <div class="fichas" id="donde">
+          ${[['local', 'De local'], ['visita', 'De visita']]
+            .map(
+              ([id, texto]) =>
+                `<button type="button" data-donde="${id}" aria-pressed="${
+                  borrador.donde === id
+                }">${texto}</button>`
+            )
+            .join('')}
+        </div>
+      </div>
+
       <div class="marcador-doble">
         <div class="campo">
-          <span class="mini-rotulo">Nosotros</span>
+          <span class="mini-rotulo">${escapar(estado.equipo || 'Nosotros')}</span>
           ${contador('nuestros', borrador.nuestros)}
         </div>
         <span class="guion">–</span>
@@ -2720,6 +2810,24 @@
             )
             .join('')}
         </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Tarjetas <span style="text-transform:none;font-weight:400">(si te sacaron alguna)</span></label>
+        <div class="fichas" id="tarjetas">
+          ${TARJETAS.map(
+            ([id, texto]) =>
+              `<button type="button" class="tarjeta-${id}" data-t="${id}" aria-pressed="${
+                (borrador.tarjetas ?? []).includes(id)
+              }">${texto}</button>`
+          ).join('')}
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo" for="notas">Notas <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+        <textarea id="notas" rows="2" class="caja-texto"
+                  placeholder="Lo que quieras acordarte de este partido">${escapar(borrador.notas ?? '')}</textarea>
       </div>
 
       <div class="campo">
@@ -2879,6 +2987,35 @@
       e.target.removeAttribute('aria-invalid')
       const err = document.getElementById('error-rival')
       if (err) err.hidden = true
+    })
+
+    document.getElementById('donde')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      // Volver a tocar la misma la apaga: es opcional de verdad, y sin dato es
+      // «no se sabe», no «de local».
+      borrador.donde = borrador.donde === b.dataset.donde ? null : b.dataset.donde
+      document.querySelectorAll('#donde button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x.dataset.donde === borrador.donde))
+      })
+    })
+
+    document.getElementById('tarjetas')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      const t = b.dataset.t
+      const puestas = new Set(borrador.tarjetas ?? [])
+      puestas.has(t) ? puestas.delete(t) : puestas.add(t)
+      // Se guardan en el orden de la tabla, no en el que las toco: asi dos
+      // partidos con las mismas tarjetas se guardan igual.
+      borrador.tarjetas = TARJETAS.map(([id]) => id).filter((id) => puestas.has(id))
+      document.querySelectorAll('#tarjetas button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(borrador.tarjetas.includes(x.dataset.t)))
+      })
+    })
+
+    document.getElementById('notas')?.addEventListener('input', (e) => {
+      borrador.notas = e.target.value
     })
 
     document.getElementById('penales')?.addEventListener('click', (e) => {
@@ -3081,6 +3218,11 @@
       goles: borrador.goles,
       formato: borrador.formato ?? 11,
       periodos: periodosDe(borrador),
+      donde: borrador.donde ?? null,
+      tarjetas: borrador.tarjetas ?? [],
+      // Vacio se guarda como vacio, no como null: son dos formas de «nada» y
+      // una sola basta.
+      notas: (borrador.notas ?? '').trim(),
       duracion: borrador.duracion ?? null,
       // Solo tiene sentido con el marcador empatado: guardarlo en un 3-1 sería
       // un dato que contradice al otro.
@@ -3457,6 +3599,16 @@
       <h2 id="titulo-hoja">Mis datos</h2>
 
       <div class="campo">
+        <label class="rotulo" for="equipo">Tu equipo</label>
+        <input id="equipo" type="text" class="caja-texto" autocomplete="off"
+               placeholder="Cómo se llama tu club"
+               value="${escapar(estado.equipo)}">
+        <p class="detalle" style="margin:0.35rem 0 0">
+          Se pregunta una vez. Después el marcador dice su nombre en vez de «nosotros».
+        </p>
+      </div>
+
+      <div class="campo">
         <label class="rotulo">Colores</label>
         <div class="fichas" id="tema">
           ${TEMAS.map(
@@ -3535,6 +3687,11 @@
     } else {
       contarLaVerdad('Este navegador no dice si los conserva. Saca la copia igual.')
     }
+
+    document.getElementById('equipo').addEventListener('input', (e) => {
+      estado.equipo = e.target.value.trim()
+      guardar()
+    })
 
     document.getElementById('tema').addEventListener('click', (e) => {
       const b = e.target.closest('button')
@@ -3818,7 +3975,11 @@
     for (const x of d.partidos ?? []) {
       const mios = x.goles ? ` (${x.goles} tuyo${x.goles === 1 ? '' : 's'})` : ''
       const como = x.sensacion ? `, ${x.sensacion}/5` : ''
-      partes.push(`${escapar(x.rival)} ${x.nuestros}–${x.suyos}${mios}${como}`)
+      const donde = x.donde ? ` (de ${x.donde})` : ''
+      partes.push(`${escapar(x.rival)}${donde} ${x.nuestros}–${x.suyos}${mios}${como}`)
+      // Las notas van en su propia linea: son una frase, no un dato mas de la
+      // fila, y apretadas al final no las lee nadie.
+      if (x.notas) partes.push(`«${escapar(x.notas)}»`)
     }
     return `<b>${enPalabras(fecha)}</b> — ${partes.join(' · ')}`
   }
@@ -4413,6 +4574,19 @@
     preguntan, y el resto de la Copa ya vienen puestos.
   */
   const FORMATOS = { 11: 'De 11', 7: 'De 7' }
+
+  /*
+    Las tarjetas de hockey, en su orden real de gravedad.
+
+    Se pueden tener varias en un partido —una verde y luego una amarilla— asi
+    que son interruptores, no una eleccion entre tres. Y ninguna tocada
+    significa ninguna tarjeta, que es lo normal: cero toques en el caso comun.
+  */
+  const TARJETAS = [
+    ['verde', 'Verde'],
+    ['amarilla', 'Amarilla'],
+    ['roja', 'Roja']
+  ]
 
   const ESTRUCTURAS = {
     2: { nombre: '2 tiempos', como: (n) => `${n}º t.` },
