@@ -5,8 +5,15 @@
   "type": "module",
   "description": "StickIQ — registro de temporada de hockey césped",
   "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node scripts/construir.mjs && node -e \"import('node:fs').then(fs => fs.cpSync('docs', 'dist', {recursive: true}))\"",
     "test": "node pruebas/correr.mjs",
+    "lint": "node scripts/revisar.mjs",
     "revisar": "node scripts/revisar.mjs",
     "construir": "node scripts/construir.mjs"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

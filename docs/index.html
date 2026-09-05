@@ -5,6 +5,8 @@
 <!-- viewport-fit=cover: sin esto queda una franja blanca bajo el notch. -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Tu temporada de hockey césped: partidos, entrenamientos, dónde y cuándo marcas.">
+<meta property="og:title" content="StickIQ">
+<meta property="og:description" content="Tu temporada de hockey césped: partidos, entrenamientos, dónde y cuándo marcas.">
 
 <!-- Anclada a la pantalla de inicio, se abre sin barra de navegador. -->
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3388,12 +3390,15 @@
     return PARTES.map(([p]) => p).find((p) => Math.round(p * dur) === x.minutos) ?? null
   }
 
-  const contador = (campo, valor) => `
+  const contador = (campo, valor) => {
+    const v = parseInt(valor, 10)
+    return `
     <div class="contador" data-campo="${campo}">
       <button type="button" data-paso="-1" aria-label="Restar">−</button>
-      <output>${valor}</output>
+      <output>${Number.isNaN(v) ? 0 : v}</output>
       <button type="button" data-paso="1" aria-label="Sumar">+</button>
     </div>`
+  }
 
   function cablearHoja() {
     document.getElementById('chips-rival')?.addEventListener('click', (e) => {
@@ -3450,7 +3455,8 @@
       const campo = c.dataset.campo
       c.querySelectorAll('button').forEach((b) => {
         b.addEventListener('click', () => {
-          const paso = Number(b.dataset.paso)
+          const paso = parseInt(b.dataset.paso, 10) || 0
+          const actual = parseInt(borrador[campo], 10) || 0
           /*
             Tus goles no pueden pasar de los del equipo.
 
@@ -3461,15 +3467,20 @@
 
             El tope se aplica en los dos sentidos — bajar el marcador propio
             tambien baja tus goles si quedaron por encima.
+            En un entrenamiento no hay marcador de equipo: no se limita contra nuestros.
           */
-          borrador[campo] = Math.max(0, borrador[campo] + paso)
-          if (campo === 'goles') borrador.goles = Math.min(borrador.goles, borrador.nuestros)
-          if (campo === 'nuestros') borrador.goles = Math.min(borrador.goles, borrador.nuestros)
+          borrador[campo] = Math.max(0, actual + paso)
+          if (typeof borrador.nuestros === 'number') {
+            if (campo === 'goles') borrador.goles = Math.min(borrador.goles, borrador.nuestros)
+            if (campo === 'nuestros') borrador.goles = Math.min(borrador.goles, borrador.nuestros)
+          }
           for (const otro of document.querySelectorAll('.contador')) {
             otro.querySelector('output').textContent = borrador[otro.dataset.campo]
           }
           const topeGoles = document.querySelector('.contador[data-campo="goles"] [data-paso="1"]')
-          if (topeGoles) topeGoles.disabled = borrador.goles >= borrador.nuestros
+          if (topeGoles) {
+            topeGoles.disabled = typeof borrador.nuestros === 'number' && borrador.goles >= borrador.nuestros
+          }
 
           // La pregunta de los penales solo existe con el marcador empatado, y
           // aparece o desaparece en el momento en que lo dejas así.
@@ -3913,9 +3924,9 @@
     const actual = estado.entrenamientos.find((e) => e.fecha === fecha)
     if (!actual) return
     borrador = {
-      goles: actual.goles ?? 0,
-      asistencias: actual.asistencias ?? 0,
-      sensacion: actual.sensacion ?? 0,
+      goles: parseInt(actual.goles, 10) || 0,
+      asistencias: parseInt(actual.asistencias, 10) || 0,
+      sensacion: parseInt(actual.sensacion, 10) || 0,
       entreno: true
     }
     document.getElementById('hoja-registro').innerHTML = `
@@ -3952,9 +3963,9 @@
     document.getElementById('guardar-entreno').addEventListener('click', () => {
       const e = estado.entrenamientos.find((x) => x.fecha === fecha)
       if (e) {
-        e.goles = borrador.goles
-        e.asistencias = borrador.asistencias
-        e.sensacion = borrador.sensacion
+        e.goles = parseInt(borrador.goles, 10) || 0
+        e.asistencias = parseInt(borrador.asistencias, 10) || 0
+        e.sensacion = parseInt(borrador.sensacion, 10) || 0
       }
       guardar()
       cerrarHoja()

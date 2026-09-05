@@ -1,0 +1,6 @@
+{
+  "name": "StickIQ",
+  "description": "Tu temporada de hockey césped: partidos, entrenamientos, dónde y cuándo marcas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

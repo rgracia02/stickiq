@@ -40,6 +40,8 @@ const cabeza = `<!doctype html>
 <!-- viewport-fit=cover: sin esto queda una franja blanca bajo el notch. -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Tu temporada de hockey césped: partidos, entrenamientos, dónde y cuándo marcas.">
+<meta property="og:title" content="StickIQ">
+<meta property="og:description" content="Tu temporada de hockey césped: partidos, entrenamientos, dónde y cuándo marcas.">
 
 <!-- Anclada a la pantalla de inicio, se abre sin barra de navegador. -->
 <meta name="apple-mobile-web-app-capable" content="yes">
