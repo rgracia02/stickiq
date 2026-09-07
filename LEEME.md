@@ -5,6 +5,9 @@ celular, que se publica como artefacto de Claude. Antes se llamaba La D.
 
 **Publicada en:** `https://claude.ai/code/artifact/e892aeef-d43a-46f3-b540-d92d99157827`
 
+**Para retomar esto sin acordarte de nada: [GUIA.md](GUIA.md)** — dónde vive
+todo, cómo publicar, y qué hacer si algo se rompe.
+
 ## Correr las pruebas
 
 ```bash
