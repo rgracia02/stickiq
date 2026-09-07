@@ -47,7 +47,7 @@ botón **«Actualizar»** abajo.
 npm test
 ```
 
-Corre 278 comprobaciones más tres revisiones que no son pruebas normales:
+Corre 289 comprobaciones más tres revisiones que no son pruebas normales:
 
 - **`revisar.mjs`** — que el código parsee, que no haya ids repetidos, que
   nada tape la hoja abierta, que `docs/` no se haya quedado atrás.
@@ -59,6 +59,28 @@ Corre 278 comprobaciones más tres revisiones que no son pruebas normales:
 
 **Si `npm test` falla, no publiques.** Las tres revisiones existen porque cada
 una atrapó algo que ya había pasado.
+
+---
+
+## Si trabajas en esto desde otra herramienta
+
+Pasó el 5 de septiembre y salió bien, pero conviene saber la regla: **`docs/`
+no se edita a mano, ni siquiera un poquito.**
+
+Ese día se añadieron unas etiquetas a `docs/index.html` directamente. La página
+quedó bien, pero `docs/sw.js` guardó el hash de la versión anterior — y como
+ese hash es lo que decide si hay algo nuevo, **la app nunca se habría
+actualizado en el teléfono**. Sin ningún error a la vista.
+
+Lo atrapó `revisar.mjs`. Por eso:
+
+1. Toca `la-d.html`, nunca `docs/`.
+2. `npm run construir` regenera `docs/` entero y coherente.
+3. `npm test` antes de subir.
+
+Y si vuelves acá después de haber trabajado desde otro lado, lo primero es
+`git pull`. Si no, el push se rechaza — que es lo correcto: git prefiere
+molestarte a perder trabajo.
 
 ---
 
