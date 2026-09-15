@@ -1040,6 +1040,26 @@
   }
   .detalle b { color: var(--tinta); font-weight: 600; }
 
+  /*
+    Un icono al lado del texto, solo antes de tocar un día.
+
+    El resto de la app dibuja todo a mano —cancha, mascota, medallas— y este
+    era el unico texto vacio sin nada del lenguaje visual de al lado. En
+    cuanto se toca un día, `mostrarDia` reemplaza todo el contenido y el
+    icono se va con el resto: es del estado vacío, no del dato.
+  */
+  .detalle-con-icono {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .detalle-icono {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    opacity: 0.6;
+  }
+
 
   /* ---------- cuenta regresiva ---------- */
 
@@ -1103,7 +1123,22 @@
 
   /* ---------- logros ---------- */
 
-  .logros {
+  /* El contenedor ya no es la grilla: ahora es una pila de grupos, cada uno
+     con su propia grilla adentro. */
+  .grupo-logros { margin-bottom: 1.15rem; }
+  .grupo-logros:last-child { margin-bottom: 0; }
+  .titulo-grupo-logros {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    margin: 0 0 0.55rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--borde);
+  }
+  .grilla-logros {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.7rem 0.5rem;
@@ -1414,6 +1449,15 @@
     color: rgb(255 255 255 / 0.7);
   }
 
+  .detalle-lamina {
+    text-align: center;
+    font-size: 0.82rem;
+    color: rgb(255 255 255 / 0.65);
+    margin: 0.9rem 0 0.2rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid rgb(255 255 255 / 0.15);
+  }
+
   .lamina .cancha-d .cesped { fill: #fff; opacity: 0.08; }
   .lamina .cancha-d .raya { stroke: #fff; opacity: 0.4; }
   .lamina .cancha-d .arco { stroke: #fff; }
@@ -1438,6 +1482,29 @@
   }
   .lamina .hito b { font-weight: 600; }
   .lamina .hito span:last-child { color: rgb(255 255 255 / 0.72); text-align: right; }
+
+  /*
+    El mismo par que «Tus récords»: numero grande, fecha chica debajo — no
+    los dos metidos en una sola linea de texto. Solo se usa donde el hito
+    de verdad es un nombre con un valor, no una frase con su frase.
+  */
+  .lamina .hito-nombre { align-self: center; }
+  .lamina .hito-valor {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--linea);
+    text-align: right;
+    line-height: 1.15;
+  }
+  .lamina .hito-valor small {
+    display: block;
+    font-family: Barlow, sans-serif;
+    font-weight: 400;
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    color: rgb(255 255 255 / 0.6);
+  }
 
   .escuditos { display: flex; flex-wrap: wrap; gap: 0.35rem; }
   .escuditos i {
@@ -2249,6 +2316,37 @@
     letter-spacing: 0.03em;
     cursor: pointer;
   }
+
+  /*
+    El punto de color de cada tema, dentro del boton que lo elige.
+
+    Un circulo de fondo (la cancha de ese tema) con uno mas chico adentro
+    (el papel de fondo de ese tema): con dos colores alcanza para reconocer
+    un tema de un vistazo, sin tener que abrirlo primero para ver si es el
+    que uno se imagina.
+  */
+  .vista-tema {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    margin-right: 0.4em;
+    vertical-align: -2px;
+    position: relative;
+    border: 1px solid rgb(0 0 0 / 0.18);
+    overflow: hidden;
+  }
+  .vista-tema > span {
+    position: absolute;
+    inset: 28%;
+    border-radius: 50%;
+  }
+  /* «Como el telefono» no tiene un color fijo que mostrar — la mitad clara y
+     la mitad oscura, en vez de inventarle un color que no es el que va a salir. */
+  .vista-tema-auto {
+    background: linear-gradient(90deg, #edf1f4 50%, #0a1319 50%);
+  }
+
   /*
     Una tarjeta puesta se ve de su color.
 
@@ -2499,7 +2597,16 @@
         <span><i style="background:var(--marca-entreno)"></i>Entrenamiento</span>
         <span><i style="background:var(--marca-partido)"></i>Partido</span>
       </p>
-      <p class="detalle" id="detalle-mapa">Toca un día para ver qué hubo.</p>
+      <p class="detalle detalle-con-icono" id="detalle-mapa">
+        <svg class="detalle-icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <rect x="4" y="5" width="16" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <line x1="4" y1="9.5" x2="20" y2="9.5" stroke="currentColor" stroke-width="1.6"/>
+          <line x1="8" y1="3" x2="8" y2="6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="16" y1="3" x2="16" y2="6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="9" cy="14" r="1.3" fill="currentColor"/>
+        </svg>
+        Toca un día para ver qué hubo.
+      </p>
     </section>
 
     <section class="tarjeta">
@@ -2730,6 +2837,30 @@
   ]
 
   const temaDe = (e) => (TEMAS.some(([t]) => t === e?.tema) ? e.tema : 'auto')
+
+  /*
+    Un punto de color por opcion, no solo el nombre.
+
+    «Rosado» como palabra no dice si es un rosa fuerte o pastel; el punto sí.
+    Los valores estan copiados de las variables de cada tema a mano, porque
+    el boton vive fuera de donde esas variables aplican — no hay forma de
+    pedirle al navegador «el --cancha que tendria si eligiera este», solo se
+    puede citarlo.
+  */
+  const VISTA_TEMA = {
+    light: { cancha: '#0e5c86', papel: '#edf1f4' },
+    dark: { cancha: '#0e5c86', papel: '#0a1319' },
+    rosa: { cancha: '#8e2255', papel: '#fdf2f6' }
+  }
+
+  function vistaTema(id) {
+    if (id === 'auto') return `<span class="vista-tema vista-tema-auto" aria-hidden="true"></span>`
+    const p = VISTA_TEMA[id]
+    return (
+      `<span class="vista-tema" style="background:${p.cancha}" aria-hidden="true">` +
+      `<span style="background:${p.papel}"></span></span>`
+    )
+  }
 
   function aplicarTema() {
     const t = temaDe(estado)
@@ -4588,7 +4719,7 @@
             ([id, texto]) =>
               `<button type="button" data-tema="${id}" aria-pressed="${
                 temaDe(estado) === id
-              }">${texto}</button>`
+              }">${vistaTema(id)}${texto}</button>`
           ).join('')}
         </div>
       </div>
@@ -5336,78 +5467,85 @@
     logro que exige llenar un campo extra es una tarea disfrazada de premio.
   */
   const LOGROS = [
-    { id: 'primer-toque', marca: '1', nombre: 'Primer toque', pista: 'Marca un entrenamiento',
+    { id: 'primer-toque', cat: 'constancia', marca: '1', nombre: 'Primer toque', pista: 'Marca un entrenamiento',
       gano: (r) => r.entrenamientos >= 1 },
-    { id: 'semana-perfecta', marca: '✓', nombre: 'Semana perfecta', pista: 'Cumple tu meta una semana',
+    { id: 'semana-perfecta', cat: 'constancia', marca: '✓', nombre: 'Semana perfecta', pista: 'Cumple tu meta una semana',
       gano: (r) => r.semanasPerfectas >= 1 },
-    { id: 'debut', marca: '1º', nombre: 'Debut', pista: 'Registra tu primer partido',
+    { id: 'debut', cat: 'partidos', marca: '1º', nombre: 'Debut', pista: 'Registra tu primer partido',
       gano: (r) => r.partidos.length >= 1 },
-    { id: 'anotaste', marca: 'G', nombre: 'Anotaste', pista: 'Marca tu primer gol',
+    { id: 'anotaste', cat: 'partidos', marca: 'G', nombre: 'Anotaste', pista: 'Marca tu primer gol',
       gano: (r) => r.golesTotal >= 1 },
-    { id: 'tres-seguidas', marca: '3×', nombre: 'Tres seguidas', pista: 'Tres semanas perfectas al hilo',
+    { id: 'tres-seguidas', cat: 'constancia', marca: '3×', nombre: 'Tres seguidas', pista: 'Tres semanas perfectas al hilo',
       gano: (r) => r.rachaMax >= 3 },
-    { id: 'doblete', marca: '2', nombre: 'Doblete', pista: 'Dos goles en un partido',
+    { id: 'doblete', cat: 'partidos', marca: '2', nombre: 'Doblete', pista: 'Dos goles en un partido',
       gano: (r) => r.maxGoles >= 2 },
-    { id: 'fecha-completa', marca: '3', nombre: 'Fecha completa', pista: 'Tres partidos el mismo día',
+    { id: 'fecha-completa', cat: 'partidos', marca: '3', nombre: 'Fecha completa', pista: 'Tres partidos el mismo día',
       gano: (r) => r.maxPartidosEnDia >= 3 },
-    { id: 'asistidor', marca: 'A', nombre: 'Asistidor', pista: 'Da tu primera asistencia',
+    { id: 'asistidor', cat: 'partidos', marca: 'A', nombre: 'Asistidor', pista: 'Da tu primera asistencia',
       gano: (r) => r.asistTotal >= 1 },
-    { id: 'diez', marca: '10', nombre: 'Diez', pista: 'Diez goles en la temporada',
+    { id: 'diez', cat: 'partidos', marca: '10', nombre: 'Diez', pista: 'Diez goles en la temporada',
       gano: (r) => r.golesTotal >= 10 },
-    { id: 'mes-entero', marca: '4×', nombre: 'Mes entero', pista: 'Cuatro semanas perfectas al hilo',
+    { id: 'mes-entero', cat: 'constancia', marca: '4×', nombre: 'Mes entero', pista: 'Cuatro semanas perfectas al hilo',
       gano: (r) => r.rachaMax >= 4 },
-    { id: 'veinticinco-entrenos', marca: '25', nombre: 'Constante', pista: 'Veinticinco entrenamientos',
+    { id: 'veinticinco-entrenos', cat: 'constancia', marca: '25', nombre: 'Constante', pista: 'Veinticinco entrenamientos',
       gano: (r) => r.entrenamientos >= 25 },
-    { id: 'repartidor', marca: '5', nombre: 'Repartidor', pista: 'Cinco asistencias en la temporada',
+    { id: 'repartidor', cat: 'partidos', marca: '5', nombre: 'Repartidor', pista: 'Cinco asistencias en la temporada',
       gano: (r) => r.asistTotal >= 5 },
-    { id: 'multitorneo', marca: '3', nombre: 'Multitorneo', pista: 'Juega tres torneos distintos',
+    { id: 'multitorneo', cat: 'equipo', marca: '3', nombre: 'Multitorneo', pista: 'Juega tres torneos distintos',
       gano: (r) => r.torneosDistintos >= 3 },
-    { id: 'todo-terreno', marca: '7/11', nombre: 'Todo terreno', pista: 'Un partido de 7 y uno de 11',
+    { id: 'todo-terreno', cat: 'equipo', marca: '7/11', nombre: 'Todo terreno', pista: 'Un partido de 7 y uno de 11',
       gano: (r) => r.formatosJugados >= 2 },
-    { id: 'fortin', marca: '3', nombre: 'Fortín', pista: 'Gana tres partidos de local',
+    { id: 'fortin', cat: 'equipo', marca: '3', nombre: 'Fortín', pista: 'Gana tres partidos de local',
       gano: (r) => r.localesGanados >= 3 },
-    { id: 'viajero', marca: '3', nombre: 'Viajero', pista: 'Gana tres partidos de visita',
+    { id: 'viajero', cat: 'equipo', marca: '3', nombre: 'Viajero', pista: 'Gana tres partidos de visita',
       gano: (r) => r.visitasGanadas >= 3 },
-    { id: 'ocho-semanas', marca: '8×', nombre: 'Temporada de hierro', pista: 'Ocho semanas perfectas al hilo',
+    { id: 'ocho-semanas', cat: 'constancia', marca: '8×', nombre: 'Temporada de hierro', pista: 'Ocho semanas perfectas al hilo',
       gano: (r) => r.rachaMax >= 8 },
-    { id: 'cincuenta-entrenos', marca: '50', nombre: 'De fierro', pista: 'Cincuenta entrenamientos',
+    { id: 'cincuenta-entrenos', cat: 'constancia', marca: '50', nombre: 'De fierro', pista: 'Cincuenta entrenamientos',
       gano: (r) => r.entrenamientos >= 50 },
 
     // Ocultos: aparecen como «?» hasta que caen.
-    { id: 'hat-trick', marca: 'HT', nombre: 'Hat-trick', pista: 'Tres goles tuyos en un partido',
+    { id: 'hat-trick', cat: 'partidos', marca: 'HT', nombre: 'Hat-trick', pista: 'Tres goles tuyos en un partido',
       oculto: true, gano: (r) => r.maxGoles >= 3 },
-    { id: 'valla-invicta', marca: '0', nombre: 'Valla invicta', pista: 'Ganar sin recibir goles',
+    { id: 'valla-invicta', cat: 'equipo', marca: '0', nombre: 'Valla invicta', pista: 'Ganar sin recibir goles',
       oculto: true, gano: (r) => r.partidos.some((x) => x.suyos === 0 && x.nuestros > 0) },
-    { id: 'la-d', marca: '25', nombre: 'La D', pista: 'Veinticinco goles en la temporada',
+    { id: 'la-d', cat: 'partidos', marca: '25', nombre: 'La D', pista: 'Veinticinco goles en la temporada',
       oculto: true, gano: (r) => r.golesTotal >= 25 },
-    { id: 'doble-aporte', marca: 'G+A', nombre: 'Gol y pase', pista: 'Gol y asistencia en el mismo partido',
+    { id: 'doble-aporte', cat: 'partidos', marca: 'G+A', nombre: 'Gol y pase', pista: 'Gol y asistencia en el mismo partido',
       oculto: true, gano: (r) => r.partidos.some((x) => x.goles >= 1 && (x.asistencias ?? 0) >= 1) },
-    { id: 'noventa', marca: '90', nombre: 'Noventa', pista: 'Noventa minutos jugados en total',
+    { id: 'noventa', cat: 'curiosidades', marca: '90', nombre: 'Noventa', pista: 'Noventa minutos jugados en total',
       oculto: true, gano: (r) => r.minutosTotal >= 90 },
-    { id: 'cartografo', marca: '5', nombre: 'Cartógrafo', pista: 'Ubica cinco goles en la D',
+    { id: 'cartografo', cat: 'curiosidades', marca: '5', nombre: 'Cartógrafo', pista: 'Ubica cinco goles en la D',
       oculto: true, gano: (r) => r.golesUbicados >= 5 },
-    { id: 'martes', marca: '10', nombre: 'El del martes', pista: 'Diez goles en entrenamientos',
+    { id: 'martes', cat: 'curiosidades', marca: '10', nombre: 'El del martes', pista: 'Diez goles en entrenamientos',
       oculto: true, gano: (r) => r.golesEntreno >= 10 },
-    { id: 'doble-doble', marca: '2+2', nombre: 'Doble-doble', pista: 'Dos goles y dos asistencias, mismo partido',
+    { id: 'doble-doble', cat: 'partidos', marca: '2+2', nombre: 'Doble-doble', pista: 'Dos goles y dos asistencias, mismo partido',
       oculto: true, gano: (r) => r.partidos.some((x) => x.goles >= 2 && (x.asistencias ?? 0) >= 2) },
-    { id: 'solitario', marca: '★', nombre: 'Uno solo', pista: 'Anota tú todos los goles de tu equipo (mínimo tres)',
+    { id: 'solitario', cat: 'partidos', marca: '★', nombre: 'Uno solo', pista: 'Anota tú todos los goles de tu equipo (mínimo tres)',
       oculto: true, gano: (r) => r.partidos.some((x) => x.goles >= 3 && x.goles === x.nuestros) },
-    { id: 'fair-play', marca: '10', nombre: 'Fair play', pista: 'Diez partidos sin ver una tarjeta',
+    { id: 'fair-play', cat: 'equipo', marca: '10', nombre: 'Fair play', pista: 'Diez partidos sin ver una tarjeta',
       oculto: true, gano: (r) => r.partidosLimpios >= 10 },
-    { id: 'doce-pasos', marca: '✓', nombre: 'Desde los doce pasos', pista: 'Gana una definición por penales',
+    { id: 'doce-pasos', cat: 'equipo', marca: '✓', nombre: 'Desde los doce pasos', pista: 'Gana una definición por penales',
       oculto: true, gano: (r) => r.penalesGanados >= 1 },
-    { id: 'muralla', marca: '5', nombre: 'Muralla', pista: 'Cinco vallas invictas en la temporada',
+    { id: 'muralla', cat: 'equipo', marca: '5', nombre: 'Muralla', pista: 'Cinco vallas invictas en la temporada',
       oculto: true, gano: (r) => r.vallasInvictas >= 5 },
-    { id: 'racha-invicta', marca: '6', nombre: 'Racha invicta', pista: 'Seis partidos seguidos sin perder',
+    { id: 'racha-invicta', cat: 'equipo', marca: '6', nombre: 'Racha invicta', pista: 'Seis partidos seguidos sin perder',
       oculto: true, gano: (r) => r.rachaInvictaMax >= 6 },
-    { id: 'coleccionista', marca: '5', nombre: 'Coleccionista', pista: 'Le ganaste a cinco rivales distintos',
+    { id: 'coleccionista', cat: 'equipo', marca: '5', nombre: 'Coleccionista', pista: 'Le ganaste a cinco rivales distintos',
       oculto: true, gano: (r) => r.rivalesVencidos >= 5 },
-    { id: 'doble-jornada', marca: '2×', nombre: 'Doble jornada', pista: 'Entrena y juega el mismo día, dos veces',
+    { id: 'doble-jornada', cat: 'curiosidades', marca: '2×', nombre: 'Doble jornada', pista: 'Entrena y juega el mismo día, dos veces',
       oculto: true, gano: (r) => r.diasDobles >= 2 },
-    { id: 'maratonista', marca: '300', nombre: 'Maratonista', pista: 'Trescientos minutos jugados en la temporada',
+    { id: 'maratonista', cat: 'curiosidades', marca: '300', nombre: 'Maratonista', pista: 'Trescientos minutos jugados en la temporada',
       oculto: true, gano: (r) => r.minutosTotal >= 300 },
-    { id: 'cien-goles-entreno', marca: '10×', nombre: 'De temporada larga', pista: 'Cien entrenamientos',
+    { id: 'cien-goles-entreno', cat: 'constancia', marca: '10×', nombre: 'De temporada larga', pista: 'Cien entrenamientos',
       oculto: true, gano: (r) => r.entrenamientos >= 100 }
+  ]
+
+  const CATEGORIAS_LOGROS = [
+    { id: 'constancia', nombre: 'Constancia' },
+    { id: 'partidos', nombre: 'Partidos' },
+    { id: 'equipo', nombre: 'Equipo y resultados' },
+    { id: 'curiosidades', nombre: 'Curiosidades' }
   ]
 
   /* El lunes de la semana siguiente, contando dias y no milisegundos. */
@@ -5546,17 +5684,35 @@
     document.getElementById('cuenta-logros').textContent =
       `${Object.keys(tengo).length} de ${LOGROS.length}`
 
-    document.getElementById('logros').innerHTML = LOGROS.map((l) => {
-      const gano = Boolean(tengo[l.id])
-      const secreto = l.oculto && !gano
-      // Un <button> y no un <div>: la pista vivia solo en `title`, y en un
-      // telefono no hay raton que se pose encima. Trece medallas con una regla
-      // que no habia forma de leer.
+    /*
+      Agrupados, no en una sola fila de 35.
+
+      Cuatro columnas alcanzaban cuando eran diecisiete. Al doble, la misma
+      grilla es un muro de circulos sin ningun orden que ayude a mirarlo —
+      nueve filas seguidas, la mitad con «?». Cuatro grupos con su titulo se
+      leen como cuatro cosas chicas, no como una grande.
+    */
+    document.getElementById('logros').innerHTML = CATEGORIAS_LOGROS.map((cat) => {
+      const deEsta = LOGROS.filter((l) => l.cat === cat.id)
+      if (!deEsta.length) return ''
       return (
-        `<button type="button" class="logro" data-tengo="${gano ? 'si' : 'no'}"` +
-        ` data-id="${l.id}">` +
-        `<div class="escudo">${secreto ? '?' : l.marca}</div>` +
-        `<span class="nombre">${secreto ? 'Secreto' : escapar(l.nombre)}</span></button>`
+        `<div class="grupo-logros">` +
+        `<p class="titulo-grupo-logros">${escapar(cat.nombre)}</p>` +
+        `<div class="grilla-logros">` +
+        deEsta.map((l) => {
+          const gano = Boolean(tengo[l.id])
+          const secreto = l.oculto && !gano
+          // Un <button> y no un <div>: la pista vivia solo en `title`, y en un
+          // telefono no hay raton que se pose encima. Trece medallas con una
+          // regla que no habia forma de leer.
+          return (
+            `<button type="button" class="logro" data-tengo="${gano ? 'si' : 'no'}"` +
+            ` data-id="${l.id}">` +
+            `<div class="escudo">${secreto ? '?' : l.marca}</div>` +
+            `<span class="nombre">${secreto ? 'Secreto' : escapar(l.nombre)}</span></button>`
+          )
+        }).join('') +
+        `</div></div>`
       )
     }).join('')
   }
@@ -6386,15 +6542,28 @@
     ]
       .filter(([, v]) => v.valor > 0)
       .map(
+        // El mismo par «numero grande + fecha chica» que ya usa «Tus récords»
+        // en la pantalla Hoy — antes esto metía los dos datos en un solo
+        // string («2 · 14 de julio»), la unica pareja nombre+valor de toda
+        // la app que no se leia como las demas.
         ([nombre, v]) =>
-          `<div class="hito"><b>${nombre}</b><span>${v.valor}${
-            v.cuando ? ` · ${v.cuando}` : ''
-          }</span></div>`
+          `<div class="hito"><span class="hito-nombre">${nombre}</span>` +
+          `<span class="hito-valor">${v.valor}` +
+          (v.cuando ? `<small>${v.cuando}</small>` : '') +
+          `</span></div>`
       )
       .join('')
 
     const ganados = partidos.filter((x) => resultado(x) === 'g').length
     const empatados = partidos.filter((x) => resultado(x) === 'e').length
+
+    // Con casi nada guardado, las cinco secciones de abajo no ponen nada:
+    // la lámina se queda en cuatro ceros y la firma, que se lee como que algo
+    // se rompió. Un mensaje quieto en su lugar dice que no es un error, es
+    // que recién empieza.
+    const hayAlgoMas = Boolean(
+      goles.length || partidos.length || hitos || conseguidos.length || t.golesEntreno || t.asistEntreno
+    )
 
     document.getElementById('medalla').outerHTML = `
       <div class="lamina" role="dialog" aria-modal="true" aria-labelledby="titulo-lamina" id="medalla">
@@ -6411,6 +6580,13 @@
           <div><span class="cifra">${t.asistencias}</span><span>Asist.</span></div>
           <div><span class="cifra">${t.entrenamientos}</span><span>Entrenos</span></div>
         </div>
+
+        ${
+          !hayAlgoMas
+            ? `<p class="detalle-lamina">Recién estás empezando. Vuelve a mirar` +
+              ` esto en unas semanas — se va a llenar solo.</p>`
+            : ''
+        }
 
         ${
           goles.length
