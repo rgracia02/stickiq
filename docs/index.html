@@ -363,6 +363,12 @@
     margin: 0;
     text-wrap: balance;
   }
+  /*
+    Sin esto, «StickIQ» era un texto mas, del mismo color que cualquier
+    titulo. Dos tonos —uno de tinta, uno del acento del tema— alcanzan para
+    que se lea como una marca y no como una etiqueta de pantalla.
+  */
+  .marca-iq { color: var(--acento); }
 
   h2 {
     font-family: "Barlow Condensed", Barlow, sans-serif;
@@ -1162,7 +1168,28 @@
 
   /* ---------- conmutador de gráficos ---------- */
 
-  .pestanas { display: flex; gap: 0.3rem; margin-bottom: 0.9rem; }
+  .pestanas { display: flex; gap: 0.9rem; margin-bottom: 0.9rem; }
+  .grupo-pestanas {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  /* La primera separa de la segunda con una linea, no solo con espacio: el
+     espacio se confunde con margen de pagina, la linea no. */
+  .grupo-pestanas + .grupo-pestanas {
+    border-left: 1px solid var(--borde);
+    padding-left: 0.9rem;
+  }
+  .grupo-etiqueta {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+  }
+  .grupo-botones { display: flex; gap: 0.3rem; }
   .pestanas button {
     flex: 1;
     height: 36px;
@@ -1528,6 +1555,19 @@
     gap: 0.55rem;
   }
   .aviso-suave .boton { padding: 0.4rem 0.7rem; }
+
+  /*
+    Una sola tarjeta con mas peso que las demas por pantalla: la de progreso
+    (nivel + mascota en Hoy, el total de la temporada en Temporada). El resto
+    de las tarjetas —records, mapa, graficos— son consulta, no lo primero que
+    hay que mirar. Sin esto, seis tarjetas blancas seguidas pesaban lo mismo
+    y nada le decia al ojo por donde empezar.
+  */
+  .tarjeta-destacada {
+    background: color-mix(in srgb, var(--acento) 6%, var(--tarjeta));
+    border: 1px solid color-mix(in srgb, var(--acento) 30%, var(--borde));
+  }
+  .tarjeta-destacada .encabezado-seccion h2 { color: var(--acento); }
 
   .separador {
     border: none;
@@ -2309,7 +2349,7 @@
 <div class="hoja">
   <header class="cabecera">
     <div>
-      <h1>StickIQ</h1>
+      <h1><span class="marca-stick">Stick</span><span class="marca-iq">IQ</span></h1>
       <p>Tu temporada de hockey</p>
     </div>
     <button class="boton boton-icono" data-tipo="callado" id="btn-datos" type="button"
@@ -2322,6 +2362,11 @@
 
   <!-- ══════════ HOY ══════════ -->
   <div class="pantalla" data-pantalla="hoy">
+
+    <!-- Solo se ve antes del primer entrenamiento o partido, y solo en Hoy:
+         apunta a la pelota, que no existe en las otras pestañas. Una vez que
+         hay algo que perder, este mensaje ya no tiene nada que explicar. -->
+    <div id="bienvenida" class="aviso-suave" hidden></div>
 
     <section class="cancha">
       <svg class="lineas" viewBox="-2 -2 95.4 59" preserveAspectRatio="xMidYMid slice"
@@ -2396,7 +2441,7 @@
     -->
     <div id="aviso-copia" class="aviso-suave" hidden></div>
 
-    <section class="tarjeta">
+    <section class="tarjeta tarjeta-destacada">
       <div class="encabezado-seccion"><h2>Tu nivel</h2></div>
       <div class="nivel" id="nivel"></div>
       <div class="mascota" id="mascota"></div>
@@ -2415,7 +2460,7 @@
   <!-- ══════════ TEMPORADA ══════════ -->
   <div class="pantalla" data-pantalla="temporada" hidden>
 
-    <section class="tarjeta">
+    <section class="tarjeta tarjeta-destacada">
       <div class="encabezado-seccion">
         <h2>En total</h2>
         <span class="cuenta-logros">oficial</span>
@@ -2446,10 +2491,20 @@
     <section class="tarjeta">
       <div class="encabezado-seccion"><h2>Tus números</h2></div>
       <div class="pestanas" id="pestanas" role="tablist">
-        <button type="button" role="tab" data-vista="aporte" aria-selected="true">Aporte</button>
-        <button type="button" role="tab" data-vista="minutos" aria-selected="false">Minutos</button>
-        <button type="button" role="tab" data-vista="entrenos" aria-selected="false">Entrenos</button>
-        <button type="button" role="tab" data-vista="semanas" aria-selected="false">Semanas</button>
+        <div class="grupo-pestanas">
+          <span class="grupo-etiqueta">Rendimiento</span>
+          <div class="grupo-botones">
+            <button type="button" role="tab" data-vista="aporte" aria-selected="true">Aporte</button>
+            <button type="button" role="tab" data-vista="minutos" aria-selected="false">Minutos</button>
+          </div>
+        </div>
+        <div class="grupo-pestanas">
+          <span class="grupo-etiqueta">Constancia</span>
+          <div class="grupo-botones">
+            <button type="button" role="tab" data-vista="entrenos" aria-selected="false">Entrenos</button>
+            <button type="button" role="tab" data-vista="semanas" aria-selected="false">Semanas</button>
+          </div>
+        </div>
       </div>
       <div class="barras" id="barras"></div>
       <p class="leyenda" id="leyenda-grafico" style="margin:0.7rem 0 0"></p>
@@ -3170,6 +3225,7 @@
     pintarProximo()
     pintarNivel()
     pintarMascota()
+    pintarBienvenida()
     pintarLogros()
     pintarMapa()
     pintarAvisoCopia()
@@ -6394,6 +6450,23 @@
     iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null
 
   const DIAS_PARA_RECORDAR = 14
+
+  /*
+    Un solo mensaje, una sola vez en la vida de la temporada: antes de que
+    exista una sola sesion. Con cero datos, seis tarjetas tecnicas («Tus
+    récords», «solo partidos») no le dicen a nadie por donde arrancar. Esto
+    si. Desaparece solo, sin boton de cerrar: en cuanto haya una sesion,
+    `sesiones() === 0` deja de ser cierto y no vuelve a aparecer nunca mas.
+  */
+  function pintarBienvenida() {
+    const caja = document.getElementById('bienvenida')
+    const toca = sesiones() === 0
+    caja.hidden = !toca
+    if (!toca) return
+    caja.innerHTML =
+      `<span>Así arranca tu temporada. Toca la pelota cuando entrenes, ` +
+      `«+ Anotar un partido» cuando juegues — el resto se va llenando solo.</span>`
+  }
 
   function pintarAvisoCopia() {
     const caja = document.getElementById('aviso-copia')
