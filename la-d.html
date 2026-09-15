@@ -674,6 +674,104 @@
     transition: width 420ms cubic-bezier(0.32, 0.72, 0, 1);
   }
 
+  /* ---------- mascota ---------- */
+
+  .mascota {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--borde);
+  }
+
+  .mascota-boton {
+    flex: none;
+    width: 76px;
+    height: 76px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    /* 44px es el minimo de la app; esta pasa por mucho porque ademas es la
+       ilustracion misma, no solo el objetivo tactil. */
+  }
+
+  .mascota-svg { width: 100%; height: 100%; overflow: visible; }
+
+  /*
+    Respira sola, todo el tiempo: es lo que distingue una mascota de un
+    icono. Mas marcado en las etapas de arriba porque a esa altura ya hay
+    algo que festejar; en cria es apenas un aliento, porque recien empieza.
+  */
+  .mascota-boton[data-etapa="cria"] .mascota-svg { animation: respirar 3.4s ease-in-out infinite; }
+  .mascota-boton[data-etapa="joven"] .mascota-svg { animation: respirar 3s ease-in-out infinite; }
+  .mascota-boton[data-etapa="adulto"] .mascota-svg { animation: respirar 2.6s ease-in-out infinite; }
+  .mascota-boton[data-etapa="estrella"] .mascota-svg { animation: respirar 2.2s ease-in-out infinite; }
+
+  @keyframes respirar {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-3px) scale(1.03); }
+  }
+
+  .mascota-boton:active .mascota-svg { animation-play-state: paused; transform: scale(0.94); }
+
+  .chispa {
+    animation: titilar 1.6s ease-in-out infinite;
+    transform-origin: center;
+  }
+  @keyframes titilar {
+    0%, 100% { opacity: 0.25; transform: scale(0.7); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+
+  .aura {
+    animation: aura-pulso 2.4s ease-in-out infinite;
+    transform-origin: center;
+  }
+  @keyframes aura-pulso {
+    0%, 100% { opacity: 0.25; transform: scale(0.94); }
+    50% { opacity: 0.55; transform: scale(1.04); }
+  }
+  .mascota-preview .aura { animation: none; opacity: 0.4; }
+
+  .mascota-texto { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+  .mascota-nombre {
+    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--tinta);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mascota-etapa { font-size: 0.85rem; color: var(--tinta-suave); }
+
+  /* La vista previa dentro de la hoja de personalizar: mas grande, quieta —
+     mover algo mientras se elige el color encima distrae de comparar. */
+  .mascota-preview {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 0.6rem;
+  }
+  .mascota-preview .mascota-svg { width: 100%; height: 100%; overflow: visible; }
+  .mascota-preview .chispa { animation: none; opacity: 1; }
+
+  .colores-mascota { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .colores-mascota button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    /* El aro de --foco ya existe para el resto de la app; acá marca cuál
+       color quedó elegido, no solo cuál tiene el teclado encima. */
+  }
+  .colores-mascota button[aria-pressed="true"] {
+    border-color: var(--tinta);
+    box-shadow: 0 0 0 2px var(--tarjeta), 0 0 0 4px var(--tinta);
+  }
+
   /* ---------- mapa de temporada ---------- */
 
   .mapa { display: flex; flex-direction: column; gap: 0.35rem; }
@@ -1636,9 +1734,16 @@
     background: var(--tarjeta);
     color: var(--tinta);
     cursor: pointer;
-    transition: border-color 140ms ease;
+    transition: border-color 140ms ease, transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
   }
   .boton:hover { border-color: var(--cancha); }
+  /*
+    :hover no confirma nada en un telefono, y el cambio de borde de arriba
+    tampoco se ve con sol de frente. El hundimiento es el mismo que ya usa la
+    pelota — no un gesto nuevo, el mismo, para que confirme igual en toda
+    la app.
+  */
+  .boton:active { transform: scale(0.96); border-color: var(--cancha); }
 
   /*
     El boton principal es amarillo, no azul.
@@ -1741,14 +1846,35 @@
     transform: translateX(-50%);
     bottom: calc(5.2rem + env(safe-area-inset-bottom));
     z-index: 25;
-    padding: 0.6rem 1rem;
-    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    max-width: calc(100vw - 2.4rem);
+    padding: 0.6rem 0.6rem 0.6rem 1rem;
+    /* Con boton adentro ya no es una capsula, es un mensaje con una accion:
+       --radio, el mismo redondeo que usan las tarjetas, no 999px. Sin boton
+       se ve igual de suave, porque a esta altura ya casi toca el maximo. */
+    border-radius: var(--radio);
     background: var(--tinta);
     color: var(--papel);
     font-size: 0.88rem;
     font-weight: 500;
     box-shadow: 0 6px 24px rgb(0 0 0 / 0.22);
     animation: sube 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  /*
+    El boton de la accion es el mismo amarillo de siempre — mismo par de
+    contraste que ya mide verificar-contraste.mjs, nada nuevo que medir — y
+    los mismos 44px de alto minimo que el resto de la app. Achicarlo para que
+    quepa en un aviso mas chico habria repetido el mismo error que esta app
+    ya corrigio una vez: un boton mas facil de fallar justo cuando las manos
+    estan cansadas.
+  */
+  .aviso-hecho .boton {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   @keyframes sube {
@@ -1840,8 +1966,17 @@
     font-size: 1.5rem;
     line-height: 1;
     cursor: pointer;
+    transition: transform 140ms cubic-bezier(0.32, 0.72, 0, 1), background 140ms ease;
+    /* Mantener presionado ahora repite el toque: sin esto, Safari confunde
+       ese mismo gesto con «selecciona este texto» y saca su propio menu. */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
   }
-  .contador button:active { background: var(--borde); }
+  /* Con sol de frente, un fondo apenas mas oscuro no se nota. El hundimiento
+     si — es el mismo gesto que ya usa la pelota. */
+  .contador button:active { background: var(--borde); transform: scale(0.9); }
 
   .contador output {
     flex: 1;
@@ -2134,6 +2269,7 @@
     <section class="tarjeta">
       <div class="encabezado-seccion"><h2>Tu nivel</h2></div>
       <div class="nivel" id="nivel"></div>
+      <div class="mascota" id="mascota"></div>
     </section>
 
     <section class="tarjeta">
@@ -2302,8 +2438,14 @@
     tema: 'auto',
     // Se pregunta UNA vez, en Mis datos. Vacio significa «no lo ha dicho», y
     // entonces el marcador vuelve a decir «nosotros».
-    equipo: ''
+    equipo: '',
+    // Sube de nivel con el mismo contador que ya existe (`nivelDe`), no uno
+    // aparte: dos numeros de nivel que no coinciden es peor que uno solo.
+    mascota: { nombre: '', especie: 'redondo', color: 'amarillo', etapaVista: null }
   }
+
+  const ESPECIES_MASCOTA = ['redondo', 'puntas', 'orejas', 'cuernos']
+  const COLORES_MASCOTA = ['amarillo', 'celeste', 'verde', 'naranja', 'morado', 'rosado']
 
   /*
     Las tarjetas de hockey, en su orden real de gravedad y con su tope.
@@ -2500,7 +2642,15 @@
         // nuevo que no se nombre aca se guarda bien y desaparece en la
         // siguiente lectura. Eso mismo hizo el tema hasta que lo probe.
         tema: d.tema ?? 'auto',
-        equipo: typeof d.equipo === 'string' ? d.equipo : ''
+        equipo: typeof d.equipo === 'string' ? d.equipo : '',
+        // Una copia vieja no trae mascota: entra con el huevo por defecto, no
+        // rota ni vacía del todo.
+        mascota: {
+          nombre: typeof d.mascota?.nombre === 'string' ? d.mascota.nombre : '',
+          especie: ESPECIES_MASCOTA.includes(d.mascota?.especie) ? d.mascota.especie : 'redondo',
+          color: COLORES_MASCOTA.includes(d.mascota?.color) ? d.mascota.color : 'amarillo',
+          etapaVista: typeof d.mascota?.etapaVista === 'string' ? d.mascota.etapaVista : null
+        }
       }
     } catch {
       /*
@@ -2889,6 +3039,7 @@
 
     pintarProximo()
     pintarNivel()
+    pintarMascota()
     pintarLogros()
     pintarMapa()
     pintarAvisoCopia()
@@ -2905,10 +3056,25 @@
     // dos cosas, se ven una tras otra y no una encima de la otra.
     const nuevos = revisarLogros()
     const batidos = revisarRecords()
+    const evoluciono = revisarEvolucion()
     if (nuevos.length) pintarLogros()
-    if (nuevos.length || batidos.length) {
+    if (nuevos.length || batidos.length || evoluciono) {
       pintarRecords()
-      celebrar([...nuevos, ...batidos])
+      celebracionesEnEspera.push(...nuevos, ...batidos, ...(evoluciono ? [evoluciono] : []))
+    }
+    /*
+      Aplazada, mientras pueda venir otro partido del mismo dia.
+
+      Guardar un partido pasa por aca: si la medalla saliera al toque, taparia
+      el aviso de «Anotar otro» que el propio guardado acaba de mostrar, justo
+      cuando el jugador quiere seguir anotando y no cerrar nada. Se suelta sola
+      cuando ese aviso se apaga sin que se haya tocado «Anotar otro» — ver
+      `avisar`.
+    */
+    if (!aplazarCelebracion && celebracionesEnEspera.length) {
+      const listas = celebracionesEnEspera
+      celebracionesEnEspera = []
+      celebrar(listas)
     }
   }
 
@@ -3006,6 +3172,14 @@
   function abrirPartido() {
     const ultimo = [...estado.dias].sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
     const asi = comoSeJuega(ultimo?.torneo, 11)
+    /*
+      Si ya jugaste hoy, el lugar no cambia entre un partido y el siguiente:
+      un dia de torneo se juega entero de local o entero de visita. Se mira
+      el ultimo partido de HOY, no el ultimo dia con partidos — ese pudo ser
+      de otra fecha, y ese «donde» ya no es el de ahora.
+    */
+    const deHoy = estado.dias.find((d) => d.fecha === hoy())
+    const referencia = deHoy?.partidos.at(-1)
     borrador = {
       asistencias: 0,
       minutos: null,
@@ -3022,7 +3196,7 @@
         puesto el — el mismo error que ya habia arreglado dos veces.
       */
       eligio: { periodos: false, duracion: false },
-      donde: null,
+      donde: referencia?.donde ?? null,
       tarjetas: { ...SIN_TARJETAS },
       notas: '',
       penales: null,
@@ -3288,7 +3462,16 @@
     cablearD()
     cablearSensacion()
     cablearFichas()
-    document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+    document.getElementById('cancelar').addEventListener('click', () => {
+      cerrarHoja()
+      // Cancelar corta la cadena de «Anotar otro»: lo que quedó esperando
+      // desde un partido anterior ya no tiene por qué seguir esperando.
+      if (celebracionesEnEspera.length) {
+        const listas = celebracionesEnEspera
+        celebracionesEnEspera = []
+        celebrar(listas)
+      }
+    })
 
     document.getElementById('guardar-partido').addEventListener('click', guardarPartido)
     /*
@@ -3324,7 +3507,7 @@
     document.querySelectorAll('.contador').forEach((c) => {
       const campo = c.dataset.campo
       c.querySelectorAll('button').forEach((b) => {
-        b.addEventListener('click', () => {
+        const aplicarPaso = () => {
           const paso = parseInt(b.dataset.paso, 10) || 0
           const actual = parseInt(borrador[campo], 10) || 0
           /*
@@ -3360,6 +3543,52 @@
             caja.hidden = !empate
             if (!empate) borrador.penales = null
           }
+        }
+
+        /*
+          Mantener presionado repite el toque, cada vez mas rapido.
+
+          Nace de un 0-8 de verdad: recien bajado de la cancha, con las manos
+          cansadas, ocho toques exactos son ocho oportunidades de fallar uno.
+          El primer toque lo sigue dando el click de siempre — esto solo se
+          encarga de lo que sigue si el dedo se queda.
+
+          El propio click que el navegador dispara al soltar, aunque haya
+          sido una pulsacion larga, no debe sumar una vez mas: por eso hay un
+          solo listener de click, y revisa `disparoLargo` antes de aplicar.
+        */
+        let espera = null
+        let intervalo = null
+        let disparoLargo = false
+        const detener = () => {
+          clearTimeout(espera)
+          clearTimeout(intervalo)
+          espera = null
+          intervalo = null
+        }
+        b.addEventListener('pointerdown', () => {
+          disparoLargo = false
+          espera = setTimeout(() => {
+            disparoLargo = true
+            let demora = 180
+            const seguir = () => {
+              aplicarPaso()
+              demora = Math.max(45, demora - 20)
+              intervalo = setTimeout(seguir, demora)
+            }
+            seguir()
+          }, 420)
+        })
+        b.addEventListener('pointerup', detener)
+        b.addEventListener('pointerleave', detener)
+        b.addEventListener('pointercancel', detener)
+
+        b.addEventListener('click', () => {
+          if (disparoLargo) {
+            disparoLargo = false
+            return
+          }
+          aplicarPaso()
         })
       })
     })
@@ -3707,10 +3936,19 @@
     // Se lee ANTES de cerrar: `cerrarHoja` pone el borrador en null, asi que
     // preguntarle despues siempre contesta «guardado», nunca «actualizado».
     const editaba = Boolean(borrador.editando)
+    // Mientras pueda venir «Anotar otro», la medalla espera: ver el
+    // comentario junto a `celebracionesEnEspera` en `pintar()`.
+    aplazarCelebracion = !editaba
     guardar()
     cerrarHoja()
     pintar()
-    avisar(editaba ? 'Partido actualizado' : 'Partido guardado')
+    aplazarCelebracion = false
+    avisar(
+      editaba ? 'Partido actualizado' : 'Partido guardado',
+      // Editar no ofrece «otro»: quien corrige un dato viejo no esta en medio
+      // de una jornada, y el boton ahi sobraria.
+      editaba ? null : { etiqueta: 'Anotar otro', fn: abrirPartido }
+    )
   }
 
   /*
@@ -3724,15 +3962,48 @@
     foco, y se va solo: es una confirmacion, no algo que haya que despachar.
   */
   let avisoEnCurso = null
-  function avisar(texto) {
+  /*
+    `accion`, opcional: un boton dentro del mismo aviso para encadenar la
+    siguiente tarea sin volver a navegar.
+
+    Nace de un dia de torneo de verdad: tres partidos, y anotar el segundo y
+    el tercero significaba salir de la hoja, encontrar «+ Partido» otra vez y
+    volver a entrar. El aviso ya estaba ahi, mirandote, en el momento exacto
+    en que sabes si vas a anotar otro.
+
+    Con boton dura mas: 2600 ms alcanza para leer «Partido guardado», no para
+    leerlo y decidir si tocar algo mas.
+  */
+  function avisar(texto, accion = null) {
     const caja = document.getElementById('aviso-hecho')
     if (!caja) return
-    caja.textContent = texto
+    caja.textContent = ''
+    caja.append(document.createTextNode(texto))
+    if (accion) {
+      const boton = document.createElement('button')
+      boton.type = 'button'
+      boton.className = 'boton'
+      boton.dataset.tipo = 'fuerte'
+      boton.textContent = accion.etiqueta
+      boton.addEventListener('click', () => {
+        clearTimeout(avisoEnCurso)
+        caja.hidden = true
+        accion.fn()
+      })
+      caja.append(boton)
+    }
     caja.hidden = false
     clearTimeout(avisoEnCurso)
     avisoEnCurso = setTimeout(() => {
       caja.hidden = true
-    }, 2600)
+      // Si nadie tocó «Anotar otro», la jornada terminó aquí: ahora sí
+      // corresponde mostrar lo que se ganó, si algo quedó esperando.
+      if (celebracionesEnEspera.length) {
+        const listas = celebracionesEnEspera
+        celebracionesEnEspera = []
+        celebrar(listas)
+      }
+    }, accion ? 4600 : 2600)
   }
 
   function cerrarHoja() {
@@ -4380,6 +4651,363 @@
       `</div>`
   }
 
+  // ---------- mascota ----------
+
+  /*
+    La mascota sube con el MISMO nivel de arriba, no con uno propio.
+
+    Dos contadores de progreso que casi siempre coinciden y a veces no —
+    porque uno cuenta distinto, o porque uno se corrigió y el otro no— generan
+    la pregunta «¿por qué mi mascota no subió si mi nivel sí?». Un solo número,
+    dos lecturas.
+  */
+  const ETAPAS_MASCOTA = [
+    { desde: 1, id: 'cria', nombre: 'Cría' },
+    { desde: 3, id: 'joven', nombre: 'Joven' },
+    { desde: 6, id: 'adulto', nombre: 'Adulto' },
+    { desde: 10, id: 'estrella', nombre: 'Estrella' }
+  ]
+
+  function etapaDe(nivel) {
+    let e = ETAPAS_MASCOTA[0]
+    for (const x of ETAPAS_MASCOTA) if (nivel >= x.desde) e = x
+    return e
+  }
+
+  const COLOR_MASCOTA_HEX = {
+    amarillo: '#f5c518',
+    celeste: '#3f97d0',
+    verde: '#4caf7d',
+    naranja: '#e67e22',
+    morado: '#8e6fce',
+    rosado: '#e6739a'
+  }
+
+  // El mismo contorno oscuro en todo el dibujo es lo que hace que se lea como
+  // una sola criatura y no como piezas sueltas pegadas — el mismo truco que
+  // usa cualquier ilustración de linea limpia.
+  const CONTORNO_MASCOTA = '#2d2d2d'
+
+  /*
+    El cuerpo y la cara son iguales para las cuatro especies: lo que cambia es
+    un solo adorno arriba de la cabeza. Cuatro dibujos enteros y distintos son
+    cuatro cosas que pueden verse mal; un adorno intercambiable sobre la misma
+    base es una sola forma que hay que acertar.
+  */
+  function accesorioMascota(especie, color) {
+    const C = CONTORNO_MASCOTA
+    if (especie === 'orejas') {
+      // Caidas hacia los costados, no paradas: una oreja recta se lee como
+      // cuerno, y esta especie ya tiene su propia ficha para eso.
+      return (
+        `<path d="M 30 15 Q 13 21 17 39 Q 25 35 32 26 Z" fill="${color}" stroke="${C}" stroke-width="1.6"/>` +
+        `<path d="M 70 15 Q 87 21 83 39 Q 75 35 68 26 Z" fill="${color}" stroke="${C}" stroke-width="1.6"/>` +
+        `<path d="M 29 20 Q 20 24 22 34" fill="none" stroke="#fff" stroke-width="2" opacity="0.4" stroke-linecap="round"/>` +
+        `<path d="M 71 20 Q 80 24 78 34" fill="none" stroke="#fff" stroke-width="2" opacity="0.4" stroke-linecap="round"/>`
+      )
+    }
+    if (especie === 'cuernos') {
+      // Curvos, como de dragon chico — dos lineas rectas se leian como orejas
+      // de burro, no como cuernos.
+      return (
+        `<path d="M 42 32 Q 35 18 40 7 Q 47 19 47 32 Z" fill="${color}" stroke="${C}" stroke-width="1.6"/>` +
+        `<path d="M 58 32 Q 65 18 60 7 Q 53 19 53 32 Z" fill="${color}" stroke="${C}" stroke-width="1.6"/>`
+      )
+    }
+    if (especie === 'puntas') {
+      return [
+        [20, 34, 25, 15, 31, 34],
+        [36, 27, 41, 9, 46, 27],
+        [46, 24, 50, 6, 54, 24],
+        [54, 27, 59, 9, 64, 27],
+        [69, 34, 75, 15, 80, 34]
+      ]
+        .map(
+          ([x1, y1, x2, y2, x3, y3]) =>
+            `<polygon points="${x1},${y1} ${x2},${y2} ${x3},${y3}" fill="${color}" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/>`
+        )
+        .join('')
+    }
+    // 'redondo': sin adorno. La especie mas simple es la ausencia de las otras
+    // tres, no un cuarto dibujo que tambien hay que acertar.
+    return ''
+  }
+
+  /*
+    Un solo cuerpo, con el tamaño y la cara cambiando por etapa.
+
+    La cría se ve chica y con los ojos cerrados porque recien empieza; a partir
+    de joven abre los ojos, sonrie apenas y el adorno de la especie ya se
+    nota; adulto suma cejas —cara de decidido, no de sorprendido— y el palo
+    apoyado al lado; estrella suma el aro que pulsa y las chispas, porque a esa
+    altura de la temporada ya generó algo que celebrar.
+  */
+  function mascotaSvg(especie, colorNombre, etapaId) {
+    const color = COLOR_MASCOTA_HEX[colorNombre] ?? COLOR_MASCOTA_HEX.amarillo
+    const C = CONTORNO_MASCOTA
+    const tallas = {
+      cria: { rx: 25, ry: 22, cy: 66 },
+      joven: { rx: 30, ry: 26, cy: 62 },
+      adulto: { rx: 34, ry: 30, cy: 58 },
+      estrella: { rx: 36, ry: 32, cy: 56 }
+    }
+    const t = tallas[etapaId] ?? tallas.cria
+    const { rx, ry, cy } = t
+    const grande = etapaId === 'adulto' || etapaId === 'estrella'
+
+    // El adorno crece con la mascota: a media escala en joven, completo desde
+    // adulto. En cría no existe todavía — no se dibuja apagado, no esta.
+    const escalaAdorno = etapaId === 'joven' ? 0.6 : 1
+    const adorno =
+      etapaId === 'cria'
+        ? ''
+        : `<g transform="translate(50,30) scale(${escalaAdorno}) translate(-50,-30)">` +
+          accesorioMascota(especie, color) +
+          `</g>`
+
+    // Brazos cortos a los costados: sin ellos el cuerpo es una pelota con
+    // cara, y con ellos es una criatura parada.
+    const brazos =
+      `<g fill="${color}" stroke="${C}" stroke-width="1.6">` +
+      `<ellipse cx="${50 - rx * 0.95}" cy="${cy + ry * 0.5}" rx="6.5" ry="8.5"` +
+      ` transform="rotate(-18 ${50 - rx * 0.95} ${cy + ry * 0.5})"/>` +
+      `<ellipse cx="${50 + rx * 0.95}" cy="${cy + ry * 0.5}" rx="6.5" ry="8.5"` +
+      ` transform="rotate(18 ${50 + rx * 0.95} ${cy + ry * 0.5})"/>` +
+      `</g>`
+
+    const ojoY = cy - ry * 0.15
+    const ojoX = rx * 0.38
+    const ojos =
+      etapaId === 'cria'
+        ? // Ojos cerrados: dos arcos, no dos puntos. Un punto quieto se lee
+          // como «mirando», y a esta etapa todavía no hizo nada que mirar.
+          `<path d="M ${50 - rx * 0.4} ${cy - 2} q 5 6 10 0" stroke="${C}" stroke-width="2.2"` +
+          ` fill="none" stroke-linecap="round"/>` +
+          `<path d="M ${50 + rx * 0.4 - 10} ${cy - 2} q 5 6 10 0" stroke="${C}" stroke-width="2.2"` +
+          ` fill="none" stroke-linecap="round"/>`
+        : // Blanco, pupila, y un brillito arriba a la izquierda de la pupila:
+          // sin ese punto los ojos quedan opacos, muertos.
+          [50 - ojoX, 50 + ojoX]
+            .map(
+              (ex) =>
+                `<circle cx="${ex}" cy="${ojoY}" r="6.2" fill="#fff" stroke="${C}" stroke-width="1.1"/>` +
+                `<circle cx="${ex + 1.6}" cy="${ojoY + 1.2}" r="3.1" fill="${C}"/>` +
+                `<circle cx="${ex + 0.5}" cy="${ojoY - 0.2}" r="1.1" fill="#fff"/>`
+            )
+            .join('')
+
+    // Cejas: solo desde adulto. Es la diferencia entre «sorprendido para
+    // siempre» y «esto ya lo tengo controlado».
+    const cejas = grande
+      ? `<path d="M ${50 - ojoX - 6} ${ojoY - 8} L ${50 - ojoX + 5} ${ojoY - 10.5}"` +
+        ` stroke="${C}" stroke-width="2.2" stroke-linecap="round"/>` +
+        `<path d="M ${50 + ojoX + 6} ${ojoY - 8} L ${50 + ojoX - 5} ${ojoY - 10.5}"` +
+        ` stroke="${C}" stroke-width="2.2" stroke-linecap="round"/>`
+      : ''
+
+    const bocaY = cy + ry * 0.34
+    const boca =
+      etapaId === 'cria'
+        ? ''
+        : etapaId === 'joven'
+          ? `<path d="M ${50 - 5} ${bocaY} Q 50 ${bocaY + 4.5} ${50 + 5} ${bocaY}"` +
+            ` stroke="${C}" stroke-width="2" fill="none" stroke-linecap="round"/>`
+          : // Adulto y estrella: sonrisa grande, cara de que ya jugó y le fue bien.
+            `<path d="M ${50 - 9} ${bocaY} Q 50 ${bocaY + (etapaId === 'estrella' ? 11 : 8)} ${50 + 9} ${bocaY}"` +
+            ` stroke="${C}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`
+
+    const cachetes =
+      etapaId === 'cria'
+        ? ''
+        : `<ellipse cx="${50 - rx * 0.62}" cy="${cy + ry * 0.28}" rx="4.5" ry="3" fill="#fff" opacity="0.4"/>` +
+          `<ellipse cx="${50 + rx * 0.62}" cy="${cy + ry * 0.28}" rx="4.5" ry="3" fill="#fff" opacity="0.4"/>`
+
+    // El palo: recompensa de haber llegado a adulto, no un adorno de especie.
+    const palo =
+      grande
+        ? `<g transform="translate(${50 + rx * 0.72},${cy + ry * 0.1}) rotate(18)">` +
+          `<rect x="-2.2" y="-30" width="4.4" height="34" rx="2.2" fill="#8a5a2b" stroke="#5c3a1a" stroke-width="1"/>` +
+          `<circle cx="0" cy="6" r="4.5" fill="var(--pelota)" stroke="${C}" stroke-width="1"/>` +
+          `</g>`
+        : ''
+
+    // El aro que pulsa detras del cuerpo, solo en la etapa mas alta. Va antes
+    // que el cuerpo en el marcado para quedar detras.
+    const aura =
+      etapaId === 'estrella'
+        ? `<circle class="aura" cx="50" cy="${cy}" r="${rx + 9}" fill="none"` +
+          ` stroke="var(--pelota)" stroke-width="2.5" opacity="0.4"/>`
+        : ''
+
+    // Tres chispas que titilan, solo en la etapa mas alta.
+    const chispas =
+      etapaId === 'estrella'
+        ? [
+            [14, 26],
+            [86, 38],
+            [20, 78]
+          ]
+            .map(
+              ([x, y], i) =>
+                `<path class="chispa" style="animation-delay:${i * 0.4}s"` +
+                ` d="M ${x} ${y - 4} L ${x + 1.4} ${y - 1.4} L ${x + 4} ${y} L ${x + 1.4} ${y + 1.4}` +
+                ` L ${x} ${y + 4} L ${x - 1.4} ${y + 1.4} L ${x - 4} ${y} L ${x - 1.4} ${y - 1.4} Z"` +
+                ` fill="var(--pelota)" stroke="${C}" stroke-width="0.6"/>`
+            )
+            .join('')
+        : ''
+
+    return (
+      `<svg viewBox="0 0 100 100" class="mascota-svg" aria-hidden="true">` +
+      chispas +
+      aura +
+      `<ellipse cx="50" cy="${cy + ry - 4}" rx="${rx * 0.9}" ry="5" fill="#000" opacity="0.14"/>` +
+      brazos +
+      `<ellipse cx="50" cy="${cy}" rx="${rx}" ry="${ry}" fill="${color}" stroke="${C}" stroke-width="2"/>` +
+      // Sombra suave abajo y brillo suave arriba a la izquierda: los dos
+      // caben adentro del cuerpo a propósito, para no depender de un
+      // clip-path — con eso el mismo dibujo nunca puede desbordarse.
+      `<ellipse cx="50" cy="${cy + ry * 0.32}" rx="${rx * 0.72}" ry="${ry * 0.34}" fill="#000" opacity="0.08"/>` +
+      `<ellipse cx="${50 - rx * 0.32}" cy="${cy - ry * 0.4}" rx="${rx * 0.42}" ry="${ry * 0.32}"` +
+      ` fill="#fff" opacity="0.3"/>` +
+      `<circle cx="${50 - rx * 0.5}" cy="${cy - ry * 0.58}" r="2.6" fill="#fff" opacity="0.85"/>` +
+      adorno +
+      ojos +
+      cejas +
+      boca +
+      cachetes +
+      palo +
+      `</svg>`
+    )
+  }
+
+  function pintarMascota() {
+    const caja = document.getElementById('mascota')
+    if (!caja) return
+    const nivel = nivelDe(sesiones())
+    const etapa = etapaDe(nivel)
+    const m = estado.mascota
+    caja.innerHTML =
+      `<button type="button" class="mascota-boton" id="btn-mascota" data-etapa="${etapa.id}"` +
+      ` aria-label="Personalizar tu mascota">` +
+      mascotaSvg(m.especie, m.color, etapa.id) +
+      `</button>` +
+      `<div class="mascota-texto">` +
+      `<span class="mascota-nombre">${escapar(m.nombre || 'Sin nombre')}</span>` +
+      `<span class="mascota-etapa">${etapa.nombre} · nivel ${nivel}</span>` +
+      `</div>`
+    document.getElementById('btn-mascota').addEventListener('click', abrirMascota)
+  }
+
+  /*
+    Marcas de evolucion, no emoji: el resto de logros y récords ya usa texto
+    corto (HT, ✓, 25), y meter emoji acá sería el único sitio distinto.
+  */
+  const MARCA_ETAPA = { joven: '▲', adulto: '▲▲', estrella: '✦' }
+
+  /*
+    Detecta el cambio de etapa UNA vez, no cada vez que se pinta.
+
+    Igual que revisarRecords: la primera lectura de una temporada que ya
+    traía nivel alto no puede festejar una evolución que ya había pasado
+    hace tiempo. Se guarda la última etapa vista, y solo avisa si cambió
+    desde la última vez que se guardó.
+  */
+  function revisarEvolucion() {
+    const etapa = etapaDe(nivelDe(sesiones()))
+    const vista = estado.mascota.etapaVista
+    if (vista === etapa.id) return null
+    estado.mascota.etapaVista = etapa.id
+    guardar()
+    if (vista === null) return null
+    return {
+      marca: MARCA_ETAPA[etapa.id] ?? '▲',
+      nombre: `¡${escapar(estado.mascota.nombre || 'Tu mascota')} evolucionó!`,
+      pista: `Ahora es ${etapa.nombre.toLowerCase()}.`
+    }
+  }
+
+  function abrirMascota() {
+    const nivel = nivelDe(sesiones())
+    const etapa = etapaDe(nivel)
+    const borradorM = { ...estado.mascota }
+
+    const previa = () => mascotaSvg(borradorM.especie, borradorM.color, etapa.id)
+
+    document.getElementById('hoja-registro').innerHTML = `
+      <h2 id="titulo-hoja">Tu mascota</h2>
+      <div class="mascota-preview" id="mascota-preview">${previa()}</div>
+      <p class="detalle" style="text-align:center;margin:-0.3rem 0 0.9rem">
+        ${etapa.nombre} · sube de nivel entrenando y jugando, igual que vos.
+      </p>
+
+      <div class="campo">
+        <label class="rotulo" for="m-nombre">Nombre</label>
+        <input id="m-nombre" type="text" autocomplete="off" maxlength="18"
+               placeholder="Ponle un nombre" value="${escapar(borradorM.nombre)}">
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Forma</label>
+        <div class="fichas" id="m-especie">
+          ${ESPECIES_MASCOTA.map(
+            (e) =>
+              `<button type="button" data-especie="${e}" aria-pressed="${borradorM.especie === e}">` +
+              `${e[0].toUpperCase()}${e.slice(1)}</button>`
+          ).join('')}
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo">Color</label>
+        <div class="colores-mascota" id="m-color">
+          ${COLORES_MASCOTA.map(
+            (c) =>
+              `<button type="button" data-color="${c}" aria-pressed="${borradorM.color === c}"` +
+              ` aria-label="${c}" style="background:${COLOR_MASCOTA_HEX[c]}"></button>`
+          ).join('')}
+        </div>
+      </div>
+
+      <div class="acciones">
+        <button class="boton" id="cancelar" type="button">Cancelar</button>
+        <button class="boton" data-tipo="fuerte" id="guardar-mascota" type="button">Guardar</button>
+      </div>
+    `
+
+    document.getElementById('cancelar').addEventListener('click', cerrarHoja)
+
+    document.getElementById('m-especie').addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      borradorM.especie = b.dataset.especie
+      document.querySelectorAll('#m-especie button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x === b))
+      })
+      document.getElementById('mascota-preview').innerHTML = previa()
+    })
+
+    document.getElementById('m-color').addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      borradorM.color = b.dataset.color
+      document.querySelectorAll('#m-color button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x === b))
+      })
+      document.getElementById('mascota-preview').innerHTML = previa()
+    })
+
+    document.getElementById('guardar-mascota').addEventListener('click', () => {
+      borradorM.nombre = document.getElementById('m-nombre').value.trim()
+      estado.mascota = borradorM
+      guardar()
+      cerrarHoja()
+      pintar()
+    })
+
+    document.getElementById('telon').hidden = false
+  }
+
   // ---------- mapa de temporada ----------
 
   const SEMANAS_A_LA_VISTA = 8
@@ -4482,7 +5110,7 @@
   // ---------- logros ----------
 
   /*
-    Doce cosas por desbloquear, y varias ocultas hasta que caen.
+    Un puñado de cosas por desbloquear, y varias ocultas hasta que caen.
     Las ocultas son las que hacen que valga la pena mirar: una cuadrícula donde
     ya sabes todo lo que falta es una lista de tareas. Una donde tres dicen «?»
     es algo que quieres descubrir.
@@ -4511,6 +5139,22 @@
       gano: (r) => r.golesTotal >= 10 },
     { id: 'mes-entero', marca: '4×', nombre: 'Mes entero', pista: 'Cuatro semanas perfectas al hilo',
       gano: (r) => r.rachaMax >= 4 },
+    { id: 'veinticinco-entrenos', marca: '25', nombre: 'Constante', pista: 'Veinticinco entrenamientos',
+      gano: (r) => r.entrenamientos >= 25 },
+    { id: 'repartidor', marca: '5', nombre: 'Repartidor', pista: 'Cinco asistencias en la temporada',
+      gano: (r) => r.asistTotal >= 5 },
+    { id: 'multitorneo', marca: '3', nombre: 'Multitorneo', pista: 'Juega tres torneos distintos',
+      gano: (r) => r.torneosDistintos >= 3 },
+    { id: 'todo-terreno', marca: '7/11', nombre: 'Todo terreno', pista: 'Un partido de 7 y uno de 11',
+      gano: (r) => r.formatosJugados >= 2 },
+    { id: 'fortin', marca: '3', nombre: 'Fortín', pista: 'Gana tres partidos de local',
+      gano: (r) => r.localesGanados >= 3 },
+    { id: 'viajero', marca: '3', nombre: 'Viajero', pista: 'Gana tres partidos de visita',
+      gano: (r) => r.visitasGanadas >= 3 },
+    { id: 'ocho-semanas', marca: '8×', nombre: 'Temporada de hierro', pista: 'Ocho semanas perfectas al hilo',
+      gano: (r) => r.rachaMax >= 8 },
+    { id: 'cincuenta-entrenos', marca: '50', nombre: 'De fierro', pista: 'Cincuenta entrenamientos',
+      gano: (r) => r.entrenamientos >= 50 },
 
     // Ocultos: aparecen como «?» hasta que caen.
     { id: 'hat-trick', marca: 'HT', nombre: 'Hat-trick', pista: 'Tres goles tuyos en un partido',
@@ -4526,7 +5170,27 @@
     { id: 'cartografo', marca: '5', nombre: 'Cartógrafo', pista: 'Ubica cinco goles en la D',
       oculto: true, gano: (r) => r.golesUbicados >= 5 },
     { id: 'martes', marca: '10', nombre: 'El del martes', pista: 'Diez goles en entrenamientos',
-      oculto: true, gano: (r) => r.golesEntreno >= 10 }
+      oculto: true, gano: (r) => r.golesEntreno >= 10 },
+    { id: 'doble-doble', marca: '2+2', nombre: 'Doble-doble', pista: 'Dos goles y dos asistencias, mismo partido',
+      oculto: true, gano: (r) => r.partidos.some((x) => x.goles >= 2 && (x.asistencias ?? 0) >= 2) },
+    { id: 'solitario', marca: '★', nombre: 'Uno solo', pista: 'Anota tú todos los goles de tu equipo (mínimo tres)',
+      oculto: true, gano: (r) => r.partidos.some((x) => x.goles >= 3 && x.goles === x.nuestros) },
+    { id: 'fair-play', marca: '10', nombre: 'Fair play', pista: 'Diez partidos sin ver una tarjeta',
+      oculto: true, gano: (r) => r.partidosLimpios >= 10 },
+    { id: 'doce-pasos', marca: '✓', nombre: 'Desde los doce pasos', pista: 'Gana una definición por penales',
+      oculto: true, gano: (r) => r.penalesGanados >= 1 },
+    { id: 'muralla', marca: '5', nombre: 'Muralla', pista: 'Cinco vallas invictas en la temporada',
+      oculto: true, gano: (r) => r.vallasInvictas >= 5 },
+    { id: 'racha-invicta', marca: '6', nombre: 'Racha invicta', pista: 'Seis partidos seguidos sin perder',
+      oculto: true, gano: (r) => r.rachaInvictaMax >= 6 },
+    { id: 'coleccionista', marca: '5', nombre: 'Coleccionista', pista: 'Le ganaste a cinco rivales distintos',
+      oculto: true, gano: (r) => r.rivalesVencidos >= 5 },
+    { id: 'doble-jornada', marca: '2×', nombre: 'Doble jornada', pista: 'Entrena y juega el mismo día, dos veces',
+      oculto: true, gano: (r) => r.diasDobles >= 2 },
+    { id: 'maratonista', marca: '300', nombre: 'Maratonista', pista: 'Trescientos minutos jugados en la temporada',
+      oculto: true, gano: (r) => r.minutosTotal >= 300 },
+    { id: 'cien-goles-entreno', marca: '10×', nombre: 'De temporada larga', pista: 'Cien entrenamientos',
+      oculto: true, gano: (r) => r.entrenamientos >= 100 }
   ]
 
   /* El lunes de la semana siguiente, contando dias y no milisegundos. */
@@ -4538,6 +5202,32 @@
 
   /* Todo lo que los logros necesitan saber, calculado una vez. */
   function resumenLogros() {
+    /*
+      Copias locales, no las de más abajo.
+
+      Esta función se extrae sola en las pruebas —un trozo de archivo, no el
+      archivo entero— y `resultado`, `seFueAPenales` y `claveRival` viven en
+      otra parte que ese trozo no incluye. Repetir tres líneas acá es más
+      simple que enseñarle a la prueba a arrastrar medio archivo.
+    */
+    const miResultado = (p) =>
+      p.nuestros > p.suyos
+        ? 'g'
+        : p.nuestros < p.suyos
+          ? 'p'
+          : p.penales === 'g'
+            ? 'g'
+            : p.penales === 'p'
+              ? 'p'
+              : 'e'
+    const miSeFueAPenales = (p) => p.nuestros === p.suyos && Boolean(p.penales)
+    const miClaveRival = (nombre) =>
+      nombre
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+
     const partidos = todosLosPartidos()
     const porFecha = new Map()
     for (const x of partidos) porFecha.set(x.fecha, (porFecha.get(x.fecha) ?? 0) + 1)
@@ -4565,6 +5255,29 @@
       anterior = l
     }
 
+    // La racha invicta, igual de cronologica que la de arriba pero sobre
+    // partidos y no sobre semanas: cuantos seguidos sin perder, la mas larga
+    // de la temporada y no la que esta corriendo ahora mismo.
+    let sinPerder = 0
+    let mejorSinPerder = 0
+    for (const x of partidos) {
+      if (miResultado(x) !== 'p') {
+        sinPerder++
+        mejorSinPerder = Math.max(mejorSinPerder, sinPerder)
+      } else {
+        sinPerder = 0
+      }
+    }
+
+    const rivalesVencidos = new Set(
+      partidos.filter((x) => miResultado(x) === 'g').map((x) => miClaveRival(x.rival))
+    ).size
+
+    const sumaTarjetas = (t) => (t?.amarilla ?? 0) + (t?.verde ?? 0) + (t?.roja ?? 0)
+
+    const fechasConEntreno = new Set(estado.entrenamientos.map((e) => e.fecha))
+    const fechasConPartido = new Set(partidos.map((x) => x.fecha))
+
     return {
       entrenamientos: estado.entrenamientos.length,
       partidos,
@@ -4579,7 +5292,17 @@
       maxGoles: Math.max(0, ...partidos.map((x) => x.goles)),
       maxPartidosEnDia: Math.max(0, ...porFecha.values()),
       semanasPerfectas: perfectas.length,
-      rachaMax: mejor
+      rachaMax: mejor,
+      rachaInvictaMax: mejorSinPerder,
+      rivalesVencidos,
+      vallasInvictas: partidos.filter((x) => x.suyos === 0 && x.nuestros > 0).length,
+      localesGanados: partidos.filter((x) => x.donde === 'local' && miResultado(x) === 'g').length,
+      visitasGanadas: partidos.filter((x) => x.donde === 'visita' && miResultado(x) === 'g').length,
+      torneosDistintos: new Set(partidos.map((x) => x.torneo)).size,
+      formatosJugados: new Set(partidos.map((x) => x.formato)).size,
+      partidosLimpios: partidos.filter((x) => sumaTarjetas(x.tarjetas) === 0).length,
+      penalesGanados: partidos.filter((x) => miSeFueAPenales(x) && miResultado(x) === 'g').length,
+      diasDobles: [...fechasConEntreno].filter((f) => fechasConPartido.has(f)).length
     }
   }
 
@@ -4634,6 +5357,10 @@
   // ---------- celebración ----------
 
   let cola = []
+  // Logros y récords que ya se ganaron pero todavía no se muestran: ver el
+  // comentario en `pintar()` sobre por qué se aplazan durante un partido.
+  let celebracionesEnEspera = []
+  let aplazarCelebracion = false
 
   function celebrar(nuevos) {
     cola = [...cola, ...nuevos]
