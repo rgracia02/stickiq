@@ -1251,6 +1251,29 @@
   }
   .record[data-vacio="si"] .marca { color: var(--tinta-suave); }
 
+  .temporada-pasada {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .temporada-pasada:last-child { border-bottom: none; }
+  .temporada-pasada-nombre {
+    font-weight: 600;
+    font-size: 0.94rem;
+  }
+  .temporada-pasada-rango {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--tinta-suave);
+    margin-top: 0.1rem;
+  }
+  .temporada-pasada-cifras {
+    display: flex;
+    gap: 0.9rem;
+    margin-top: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--tinta-suave);
+  }
+
 
   /* ---------- el resumen de temporada ---------- */
 
@@ -2549,6 +2572,13 @@
       <div class="dias" id="dias"></div>
     </section>
 
+    <!-- Solo se ve si alguna vez se cerró una temporada — para casi todo el
+         mundo esto no existe todavía, y una tarjeta vacía no aporta nada. -->
+    <section class="tarjeta" id="caja-temporadas-pasadas" hidden>
+      <div class="encabezado-seccion"><h2>Temporadas pasadas</h2></div>
+      <div id="temporadas-pasadas"></div>
+    </section>
+
   </div>
 
   <!-- ══════════ LOGROS ══════════ -->
@@ -2651,7 +2681,11 @@
     equipo: '',
     // Sube de nivel con el mismo contador que ya existe (`nivelDe`), no uno
     // aparte: dos numeros de nivel que no coinciden es peor que uno solo.
-    mascota: { nombre: '', especie: 'redondo', color: 'amarillo', etapaVista: null }
+    mascota: { nombre: '', especie: 'redondo', color: 'amarillo', etapaVista: null },
+    // Temporadas cerradas: cada una es una foto de los entrenamientos y
+    // partidos que tenia la temporada actual al momento de archivarla. Nunca
+    // se borra nada, solo se guarda aparte y la actual arranca de cero.
+    temporadas: []
   }
 
   const ESPECIES_MASCOTA = ['redondo', 'puntas', 'orejas', 'cuernos']
@@ -2832,6 +2866,10 @@
             // pregunto. Un «local» inventado ensucia justo la comparacion
             // para la que sirve el dato.
             donde: null,
+            // null = no se sabe en que posicion jugo. Los partidos anotados
+            // antes de que existiera la pregunta no eran de delantero: es
+            // que no se pregunto.
+            posicion: null,
             // Sin tarjetas es lo normal, y por eso el vacio significa cero.
             tarjetas: { ...SIN_TARJETAS },
             // Los partidos guardados antes de que existiera el formato se leen
@@ -2884,7 +2922,18 @@
           especie: ESPECIES_MASCOTA.includes(d.mascota?.especie) ? d.mascota.especie : 'redondo',
           color: COLORES_MASCOTA.includes(d.mascota?.color) ? d.mascota.color : 'amarillo',
           etapaVista: typeof d.mascota?.etapaVista === 'string' ? d.mascota.etapaVista : null
-        }
+        },
+        // Una copia vieja no trae temporadas cerradas: no es que se hayan
+        // perdido, es que esta funcion no existia todavia.
+        temporadas: (Array.isArray(d.temporadas) ? d.temporadas : [])
+          .filter((t) => t && Array.isArray(t.entrenamientos) && Array.isArray(t.dias))
+          .map((t) => ({
+            nombre: typeof t.nombre === 'string' && t.nombre ? t.nombre : 'Temporada',
+            desde: typeof t.desde === 'string' ? t.desde : null,
+            cerrada: typeof t.cerrada === 'string' ? t.cerrada : hoy(),
+            entrenamientos: t.entrenamientos,
+            dias: t.dias
+          }))
       }
     } catch {
       /*
@@ -3283,6 +3332,7 @@
     pintarMapaD()
     pintarRivales()
     pintarDias()
+    pintarTemporadasPasadas()
 
     // Al final y no al principio: la medalla tapa la pantalla, y tiene que
     // aparecer sobre el estado ya actualizado para que al cerrarla se vea el
@@ -3432,6 +3482,10 @@
       */
       eligio: { periodos: false, duracion: false },
       donde: referencia?.donde ?? null,
+      // A diferencia de «donde», la posicion se hereda del ultimo partido
+      // jugado en general, no solo de hoy: un jugador no cambia de posicion
+      // entre torneos como cambia de local a visita.
+      posicion: ultimo?.partidos.at(-1)?.posicion ?? null,
       tarjetas: { ...SIN_TARJETAS },
       notas: '',
       penales: null,
@@ -3560,6 +3614,17 @@
                 }">${texto}</button>`
             )
             .join('')}
+        </div>
+      </div>
+      <div class="campo">
+        <label class="rotulo">Posición <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+        <div class="fichas" id="posicion">
+          ${POSICIONES.map(
+            ([id, texto]) =>
+              `<button type="button" data-posicion="${id}" aria-pressed="${
+                borrador.posicion === id
+              }">${texto}</button>`
+          ).join('')}
         </div>
       </div>
       <div class="campo">
@@ -3886,6 +3951,7 @@
       caja.textContent = [
         borrador.torneo || 'Partido',
         borrador.donde,
+        posicionTexto(borrador.posicion),
         `${FORMATOS[borrador.formato] ?? 'De 11'}, ${estructuraDe(borrador).nombre}`,
         dur ? `${dur} min` : null
       ]
@@ -3929,6 +3995,16 @@
       borrador.donde = borrador.donde === b.dataset.donde ? null : b.dataset.donde
       document.querySelectorAll('#donde button').forEach((x) => {
         x.setAttribute('aria-pressed', String(x.dataset.donde === borrador.donde))
+      })
+      pintarResumen()
+    })
+
+    document.getElementById('posicion')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button')
+      if (!b) return
+      borrador.posicion = borrador.posicion === b.dataset.posicion ? null : b.dataset.posicion
+      document.querySelectorAll('#posicion button').forEach((x) => {
+        x.setAttribute('aria-pressed', String(x.dataset.posicion === borrador.posicion))
       })
       pintarResumen()
     })
@@ -4152,6 +4228,7 @@
       formato: borrador.formato ?? 11,
       periodos: periodosDe(borrador),
       donde: borrador.donde ?? null,
+      posicion: borrador.posicion ?? null,
       tarjetas: { ...borrador.tarjetas },
       // Vacio se guarda como vacio, no como null: son dos formas de «nada» y
       // una sola basta.
@@ -4586,6 +4663,9 @@
   function abrirDatos() {
     const copia = JSON.stringify(estado, null, 2)
     const dias = diasDesde(estado.copiado)
+    // Cerrar una temporada vacía no tiene nada que archivar: la sección ni
+    // se ofrece hasta que haya algo de verdad adentro.
+    const haySesionAbierta = estado.entrenamientos.length > 0 || estado.dias.length > 0
     document.getElementById('hoja-registro').innerHTML = `
       <h2 id="titulo-hoja">Mis datos</h2>
 
@@ -4642,6 +4722,31 @@
       <p id="dice-copia" class="detalle" style="margin:0"></p>
       <div id="confirmar-copia"></div>
       <button class="boton" id="revisar-pegado" type="button" style="width:100%">Revisar</button>
+
+      ${
+        haySesionAbierta
+          ? `
+      <hr class="separador">
+
+      <h2 style="font-size:1rem">Cerrar temporada</h2>
+      <p style="margin:0;font-size:0.85rem;color:var(--tinta-suave)">
+        Archiva los entrenamientos y partidos de ahora bajo un nombre, y
+        empieza de cero. Tu nivel, tu mascota y tus logros no se tocan —
+        siguen sumando igual. Se puede ver lo archivado en la pestaña
+        Temporada.
+      </p>
+      <div class="campo">
+        <label class="rotulo" for="nombre-temporada">Nombre para la que se cierra</label>
+        <input id="nombre-temporada" type="text" class="caja-texto" autocomplete="off"
+               value="${escapar(sugerenciaNombreTemporada())}">
+      </div>
+      <div id="confirmar-cierre"></div>
+      <button class="boton" data-tipo="peligro" id="pedir-cierre" type="button" style="width:100%">
+        Cerrar temporada
+      </button>
+      `
+          : ''
+      }
 
       <div class="acciones">
         <button class="boton" id="cancelar" type="button">Cerrar</button>
@@ -4823,6 +4928,28 @@
       })
     })
 
+    /*
+      Mismo patrón que «Restaurar»: un primer toque muestra qué se va a
+      archivar, y solo ahí aparece el botón que de verdad lo hace. Cerrar
+      una temporada entera no puede ser un solo toque sin ver antes qué trae.
+    */
+    document.getElementById('pedir-cierre')?.addEventListener('click', () => {
+      const nombre = document.getElementById('nombre-temporada').value.trim() || 'Temporada'
+      const nEntrenos = estado.entrenamientos.length
+      const nPartidos = estado.dias.reduce((n, d) => n + d.partidos.length, 0)
+      document.getElementById('confirmar-cierre').innerHTML =
+        `<p class="detalle" style="margin:0.5rem 0">` +
+        `Vas a archivar <b>${nEntrenos}</b> ${nEntrenos === 1 ? 'entrenamiento' : 'entrenamientos'} y ` +
+        `<b>${nPartidos}</b> ${nPartidos === 1 ? 'partido' : 'partidos'} como «${escapar(nombre)}». ` +
+        `La temporada que empieza después queda en cero — tu nivel y tu mascota, no.</p>` +
+        `<button class="boton" data-tipo="peligro" id="confirmar-cierre-btn" type="button"` +
+        ` style="width:100%">Sí, cerrar «${escapar(nombre)}»</button>`
+      document.getElementById('confirmar-cierre-btn').addEventListener('click', () => {
+        cerrarTemporada(nombre)
+        cerrarHoja()
+      })
+    })
+
     document.getElementById('telon').hidden = false
   }
 
@@ -4866,7 +4993,7 @@
   }
 
   function pintarNivel() {
-    const total = sesiones()
+    const total = sesionesTotales()
     const n = nivelDe(total)
     const base = umbral(n)
     const techo = umbral(n + 1)
@@ -4896,6 +5023,23 @@
     la pregunta «¿por qué mi mascota no subió si mi nivel sí?». Un solo número,
     dos lecturas.
   */
+
+  /*
+    De toda la vida, no solo de esta temporada.
+
+    `sesiones()` cuenta la temporada abierta — la que se vacia al cerrarla — y
+    eso esta bien para la meta semanal y para los logros, que son cosas que
+    se vuelven a perseguir cada temporada. El nivel y la mascota no: cerrar
+    una temporada no puede hacer que la mascota vuelva a ser un huevo. Suman
+    lo de ahora mas lo de cada temporada archivada, y por eso nunca bajan.
+  */
+  const sesionesTotales = () =>
+    sesiones() +
+    estado.temporadas.reduce(
+      (n, t) => n + t.entrenamientos.length + t.dias.reduce((m, d) => m + d.partidos.length, 0),
+      0
+    )
+
   const ETAPAS_MASCOTA = [
     { desde: 1, id: 'cria', nombre: 'Cría' },
     { desde: 3, id: 'joven', nombre: 'Joven' },
@@ -5119,7 +5263,7 @@
   function pintarMascota() {
     const caja = document.getElementById('mascota')
     if (!caja) return
-    const nivel = nivelDe(sesiones())
+    const nivel = nivelDe(sesionesTotales())
     const etapa = etapaDe(nivel)
     const m = estado.mascota
     caja.innerHTML =
@@ -5149,7 +5293,7 @@
     desde la última vez que se guardó.
   */
   function revisarEvolucion() {
-    const etapa = etapaDe(nivelDe(sesiones()))
+    const etapa = etapaDe(nivelDe(sesionesTotales()))
     const vista = estado.mascota.etapaVista
     if (vista === etapa.id) return null
     estado.mascota.etapaVista = etapa.id
@@ -5163,7 +5307,7 @@
   }
 
   function abrirMascota() {
-    const nivel = nivelDe(sesiones())
+    const nivel = nivelDe(sesionesTotales())
     const etapa = etapaDe(nivel)
     const borradorM = { ...estado.mascota }
 
@@ -5241,6 +5385,84 @@
     })
 
     document.getElementById('telon').hidden = false
+  }
+
+  // ---------- temporadas ----------
+
+  /*
+    Archiva la temporada actual entera y deja la de ahora en cero.
+
+    No se borra nada: entrenamientos y partidos quedan guardados dentro de
+    `estado.temporadas`, con el nombre que se le puso y la fecha de cierre.
+
+    Logros y récords no viajan con la temporada archivada porque no son de
+    la temporada, son de toda la carrera. Un logro ya ganado sigue ganado
+    —`revisarLogros` nunca lo vuelve a revisar—, y los récords que se ven
+    después de cerrar son los de la temporada nueva: en cero, que es
+    justo lo que hay que ver el primer día de una temporada.
+  */
+  function cerrarTemporada(nombre) {
+    const desde =
+      [...estado.entrenamientos.map((e) => e.fecha), ...estado.dias.map((d) => d.fecha)].sort()[0] ?? null
+    estado.temporadas = [
+      ...estado.temporadas,
+      {
+        nombre: nombre || 'Temporada',
+        desde,
+        cerrada: hoy(),
+        entrenamientos: estado.entrenamientos,
+        dias: estado.dias
+      }
+    ]
+    estado.entrenamientos = []
+    estado.dias = []
+    guardar()
+    pintar()
+  }
+
+  function resumenTemporadaArchivada(t) {
+    const partidos = t.dias.flatMap((d) => d.partidos)
+    return {
+      entrenamientos: t.entrenamientos.length,
+      partidos: partidos.length,
+      goles: partidos.reduce((n, x) => n + x.goles, 0),
+      asistencias: partidos.reduce((n, x) => n + (x.asistencias ?? 0), 0)
+    }
+  }
+
+  // Un nombre listo para tocar «Cerrar» y ya, sin tener que pensar uno.
+  function sugerenciaNombreTemporada() {
+    const base = `Temporada ${hoy().slice(0, 4)}`
+    return estado.temporadas.some((t) => t.nombre === base) ? `${base} (2)` : base
+  }
+
+  function pintarTemporadasPasadas() {
+    const caja = document.getElementById('caja-temporadas-pasadas')
+    if (!caja) return
+    if (!estado.temporadas.length) {
+      caja.hidden = true
+      return
+    }
+    caja.hidden = false
+    // La mas reciente arriba, igual que en «Partidos»: lo ultimo es lo que
+    // uno viene a mirar.
+    const ordenadas = [...estado.temporadas].sort((a, b) => b.cerrada.localeCompare(a.cerrada))
+    document.getElementById('temporadas-pasadas').innerHTML = ordenadas
+      .map((t) => {
+        const r = resumenTemporadaArchivada(t)
+        const rango = t.desde ? `${enPalabras(t.desde)} — ${enPalabras(t.cerrada)}` : `hasta ${enPalabras(t.cerrada)}`
+        return (
+          `<div class="temporada-pasada">` +
+          `<div><span class="temporada-pasada-nombre">${escapar(t.nombre)}</span>` +
+          `<span class="temporada-pasada-rango">${rango}</span></div>` +
+          `<div class="temporada-pasada-cifras">` +
+          `<span>${cuantos(r.partidos, 'partido', 'partidos')}</span>` +
+          `<span>${cuantos(r.goles, 'gol', 'goles')}</span>` +
+          `<span>${cuantos(r.entrenamientos, 'entreno', 'entrenos')}</span>` +
+          `</div></div>`
+        )
+      })
+      .join('')
   }
 
   // ---------- mapa de temporada ----------
@@ -5324,7 +5546,8 @@
       const mios = x.goles ? ` (${x.goles} tuyo${x.goles === 1 ? '' : 's'})` : ''
       const como = x.sensacion ? `, ${x.sensacion}/5` : ''
       const donde = x.donde ? ` (${x.donde})` : ''
-      partes.push(`${escapar(x.rival)}${donde} ${x.nuestros}–${x.suyos}${mios}${como}`)
+      const posicion = x.posicion ? `, de ${posicionTexto(x.posicion).toLowerCase()}` : ''
+      partes.push(`${escapar(x.rival)}${donde} ${x.nuestros}–${x.suyos}${mios}${como}${posicion}`)
       // Las notas van en su propia linea: son una frase, no un dato mas de la
       // fila, y apretadas al final no las lee nadie.
       if (x.notas) partes.push(`«${escapar(x.notas)}»`)
@@ -6080,6 +6303,14 @@
     preguntan, y el resto de la Copa ya vienen puestos.
   */
   const FORMATOS = { 11: 'De 11', 7: 'De 7' }
+
+  const POSICIONES = [
+    ['portero', 'Portero'],
+    ['defensa', 'Defensa'],
+    ['medio', 'Medio'],
+    ['delantero', 'Delantero']
+  ]
+  const posicionTexto = (id) => POSICIONES.find(([x]) => x === id)?.[1] ?? null
 
 
   const ESTRUCTURAS = {
