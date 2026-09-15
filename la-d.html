@@ -282,12 +282,29 @@
     gap: 1rem;
   }
 
+  /*
+    Un foco suave arriba a la izquierda, como luz de estadio — el mismo
+    truco de profundidad que ya usa el cuerpo de la mascota (brillo arriba,
+    sombra abajo). Sin esto la tarjeta era un solo azul liso de esquina a
+    esquina, sin ningun punto donde el ojo entrara primero.
+  */
+  .cancha::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 14%, rgb(255 255 255 / 0.14), transparent 58%);
+    pointer-events: none;
+  }
+
   .lineas {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    opacity: 0.16;
+    /* Antes 0.16: se notaba tan poco que la cancha de atras se leia como una
+       textura cualquiera, no como la cancha real dibujada con las medidas
+       del reglamento que es. */
+    opacity: 0.26;
     pointer-events: none;
   }
 
