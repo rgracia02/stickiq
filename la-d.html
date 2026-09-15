@@ -1688,22 +1688,22 @@
   }
 
   /*
-    Los iconos de las pestañas.
+    Los iconos de las pestañas, dibujados a mano igual que la cancha y la
+    mascota — antes eran emoji, que traen su propio color y su propia forma
+    segun el telefono, y no podian teñirse junto con la pestaña activa. Con
+    `currentColor` heredan el mismo color que el texto de al lado, gratis:
+    blanco en la pestaña activa, tinta apagada en las demas, sin reglas
+    aparte.
 
     Van con `aria-hidden`: la etiqueta ya dice «Temporada», y un lector de
-    pantalla que ademas lea «grafico de barras» solo alarga el recorrido. El
-    emoji es para el ojo, no para el oido.
-
-    `font-family` propia y no la de la pagina: sin esto, en algunos Android el
-    emoji se pinta con la tipografia de texto y sale un cuadro vacio.
+    pantalla que ademas la describa solo alarga el recorrido.
   */
   .icono {
-    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-    font-size: 1em;
-    line-height: 1;
+    width: 1.05em;
+    height: 1.05em;
     margin-right: 0.32em;
-    /* El emoji trae su propio color y no debe heredar el de la pestaña activa. */
-    -webkit-text-fill-color: initial;
+    vertical-align: -0.16em;
+    color: inherit;
   }
 
   /* Un boton que es solo un icono: cuadrado, no una capsula estirada. */
@@ -2223,7 +2223,21 @@
       <p>Tu temporada de hockey</p>
     </div>
     <button class="boton boton-icono" data-tipo="callado" id="btn-datos" type="button"
-            aria-label="Ajustes y mis datos" title="Ajustes y mis datos"><span aria-hidden="true">⚙️</span></button>
+            aria-label="Ajustes y mis datos" title="Ajustes y mis datos">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:1.15em;height:1.15em">
+        <circle cx="12" cy="12" r="3.3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+        <g stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <line x1="12" y1="2.7" x2="12" y2="5.2"/>
+          <line x1="12" y1="18.8" x2="12" y2="21.3"/>
+          <line x1="2.7" y1="12" x2="5.2" y2="12"/>
+          <line x1="18.8" y1="12" x2="21.3" y2="12"/>
+          <line x1="5.6" y1="5.6" x2="7.4" y2="7.4"/>
+          <line x1="16.6" y1="16.6" x2="18.4" y2="18.4"/>
+          <line x1="5.6" y1="18.4" x2="7.4" y2="16.6"/>
+          <line x1="16.6" y1="7.4" x2="18.4" y2="5.6"/>
+        </g>
+      </svg>
+    </button>
   </header>
 
   <!-- El aviso de espacio SI va arriba: si no cabe, nada de lo de abajo se
@@ -2447,11 +2461,28 @@
 
 <nav class="barra-abajo vidrio" id="barra-abajo" role="tablist" aria-label="Secciones">
   <button type="button" role="tab" data-pantalla="hoy" aria-selected="true">
-    <span class="icono" aria-hidden="true">🏑</span>Hoy</button>
+    <svg class="icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M17 3 10 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M10 18c-1.5 3-5.5 3-7 1.5" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round"/>
+    </svg>Hoy</button>
   <button type="button" role="tab" data-pantalla="temporada" aria-selected="false">
-    <span class="icono" aria-hidden="true">📊</span>Temporada</button>
+    <svg class="icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="4" y="14" width="4" height="7" rx="1.3" fill="currentColor"/>
+      <rect x="10" y="9" width="4" height="12" rx="1.3" fill="currentColor"/>
+      <rect x="16" y="4" width="4" height="17" rx="1.3" fill="currentColor"/>
+    </svg>Temporada</button>
   <button type="button" role="tab" data-pantalla="logros" aria-selected="false">
-    <span class="icono" aria-hidden="true">🏆</span>Logros</button>
+    <svg class="icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M7 3h10v5a5 5 0 0 1-10 0V3z" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linejoin="round"/>
+      <path d="M7 4.3C4.7 4.6 3.5 6.4 4.3 8.6 5 10.6 6.9 11.7 8.6 11.2" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M17 4.3c2.3.3 3.5 2.1 2.7 4.3-.7 2-2.6 3.1-4.3 2.6" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M12 13v3M9 19.2h6M8.3 16.2h7.4" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round"/>
+    </svg>Logros</button>
 </nav>
 
 
